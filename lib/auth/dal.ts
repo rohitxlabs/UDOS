@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { decrypt, getSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/app/generated/prisma";
+import { can, type Capability, type Module } from "@/lib/permissions";
 
 // Data Access Layer: the single source of truth for "who is logged in".
 // Every server component / server action / route handler that needs auth
@@ -57,6 +58,17 @@ export async function requireRole(...roles: Role[]) {
   const session = await verifySession();
   if (!roles.includes(session.role)) {
     redirect("/dashboard");
+  }
+  return session;
+}
+
+// Use in server components/actions/route handlers that back a specific
+// module — throws (rather than redirecting) so server actions surface a
+// clear error instead of silently no-op-ing.
+export async function requireCapability(moduleName: Module, capability: Capability) {
+  const session = await verifySession();
+  if (!can(session.role, moduleName, capability)) {
+    throw new Error(`Forbidden: role ${session.role} lacks ${capability} on ${moduleName}`);
   }
   return session;
 }

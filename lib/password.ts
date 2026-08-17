@@ -23,11 +23,13 @@ export function generatePassword(length = 10) {
   return out;
 }
 
-export function generateUsername(name: string, suffix: string) {
+// Returns just the normalized base (e.g. "Test Teacher" -> "test") —
+// callers append their own ".suffix" for uniqueness.
+export function usernameBase(name: string) {
   const base = name
     .toLowerCase()
     .replace(/[^a-z\s]/g, "")
     .trim()
     .split(/\s+/)[0];
-  return `${base || "user"}.${suffix}`;
+  return base || "user";
 }

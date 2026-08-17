@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { hashPassword, generatePassword, generateUsername } from "@/lib/password";
+import { hashPassword, generatePassword, usernameBase } from "@/lib/password";
 import { writeAuditLog } from "@/lib/audit";
 import { Role } from "@/app/generated/prisma/client";
 
@@ -13,13 +13,21 @@ import { Role } from "@/app/generated/prisma/client";
 // the login — not through this generic staff-account screen.
 const CREATABLE_ROLES = [Role.SUPER_ADMIN, Role.MANAGEMENT, Role.TEACHER, Role.ACCOUNTS, Role.EXAM_CELL] as const;
 
+// FormData.get() returns null for fields absent from the DOM (e.g. the
+// collapsed "advanced" section) and "" for present-but-empty fields —
+// normalize both to undefined so z.optional() accepts them.
+const emptyToUndefined = (value: unknown) => (value === "" || value === null ? undefined : value);
+
 const createUserSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   role: z.enum(CREATABLE_ROLES),
-  email: z.union([z.literal(""), z.string().trim().email("Invalid email")]).optional(),
-  phone: z.string().trim().optional(),
-  customUsername: z.string().trim().optional(),
-  customPassword: z.union([z.literal(""), z.string().min(8, "Password must be at least 8 characters")]).optional(),
+  email: z.preprocess(emptyToUndefined, z.string().trim().email("Invalid email").optional()),
+  phone: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  customUsername: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  customPassword: z.preprocess(
+    emptyToUndefined,
+    z.string().min(8, "Password must be at least 8 characters").optional()
+  ),
 });
 
 export type CreateUserState = {
@@ -50,7 +58,7 @@ export async function createStaffUser(_prev: CreateUserState, formData: FormData
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) return { error: `Username "${username}" is already taken` };
   } else {
-    const base = generateUsername(name, "");
+    const base = usernameBase(name);
     let candidate = "";
     let attempt = 0;
     do {

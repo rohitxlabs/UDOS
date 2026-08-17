@@ -150,6 +150,12 @@ export const ROLE_LABELS: Record<Role, string> = {
   PARENT: "Parent",
 };
 
+// Plain string literals (not the Prisma-generated enum object) so this
+// stays safe to import from client components — importing the generated
+// Prisma client's runtime enum drags Node-only internals into the browser
+// bundle and crashes the client build.
+export const STAFF_CREATABLE_ROLES: Role[] = ["SUPER_ADMIN", "MANAGEMENT", "TEACHER", "ACCOUNTS", "EXAM_CELL"];
+
 export const ROLE_HOME: Record<Role, string> = {
   SUPER_ADMIN: "/dashboard",
   MANAGEMENT: "/dashboard",

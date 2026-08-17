@@ -4,10 +4,7 @@ import { useActionState, useState } from "react";
 import { Plus, Loader2, X } from "lucide-react";
 import { createStaffUser, type CreateUserState } from "./actions";
 import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
-import { ROLE_LABELS } from "@/lib/permissions";
-import { Role } from "@/app/generated/prisma/client";
-
-const CREATABLE_ROLES: Role[] = [Role.SUPER_ADMIN, Role.MANAGEMENT, Role.TEACHER, Role.ACCOUNTS, Role.EXAM_CELL];
+import { ROLE_LABELS, STAFF_CREATABLE_ROLES } from "@/lib/permissions";
 
 const initialState: CreateUserState = {};
 
@@ -78,7 +75,7 @@ export function CreateUserForm() {
                   <option value="" disabled>
                     Select a role
                   </option>
-                  {CREATABLE_ROLES.map((role) => (
+                  {STAFF_CREATABLE_ROLES.map((role) => (
                     <option key={role} value={role}>
                       {ROLE_LABELS[role]}
                     </option>

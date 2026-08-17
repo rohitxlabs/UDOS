@@ -2,9 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -22,7 +21,7 @@ const schema = z.object({
 export type CourseState = { error?: string; success?: boolean };
 
 export async function saveCourse(_prev: CourseState, formData: FormData): Promise<CourseState> {
-  const session = await requireCapability("courses", formData.get("id") ? "edit" : "create");
+  const ctx = await requireCapability("courses", formData.get("id") ? "edit" : "create");
 
   const parsed = schema.safeParse({
     id: formData.get("id") || undefined,
@@ -37,12 +36,12 @@ export async function saveCourse(_prev: CourseState, formData: FormData): Promis
 
   try {
     const course = id
-      ? await prisma.course.update({ where: { id }, data: { name, code, durationSemesters, departmentId } })
-      : await prisma.course.create({ data: { name, code, durationSemesters, departmentId } });
+      ? await ctx.db.course.update({ where: { id }, data: { name, code, durationSemesters, departmentId } })
+      : await ctx.db.course.create({ data: { name, code, durationSemesters, departmentId } });
 
-    await writeAuditLog({
-      userId: session.userId,
-      role: session.role,
+    await writeTenantAuditLog(ctx.db, {
+      userId: ctx.userId,
+      roleName: ctx.roleName,
       action: id ? "COURSE_UPDATED" : "COURSE_CREATED",
       module: "courses",
       recordId: course.id,
@@ -60,17 +59,17 @@ export async function saveCourse(_prev: CourseState, formData: FormData): Promis
 }
 
 export async function deleteCourse(id: string) {
-  const session = await requireCapability("courses", "delete");
+  const ctx = await requireCapability("courses", "delete");
 
   try {
-    await prisma.course.delete({ where: { id } });
+    await ctx.db.course.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "course"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "COURSE_DELETED",
     module: "courses",
     recordId: id,

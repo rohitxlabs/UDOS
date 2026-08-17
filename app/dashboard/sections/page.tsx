@@ -1,13 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { CreateSectionButton } from "./section-form";
 import { SectionsTable } from "./sections-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function SectionsPage() {
-  await requireCapability("sections", "view");
+  const ctx = await requireCapability("sections", "view");
 
-  const semesters = await prisma.semester.findMany({
+  const semesters = await ctx.db.semester.findMany({
     orderBy: [{ course: { name: "asc" } }, { number: "asc" }],
     include: { course: { select: { name: true } }, academicYear: { select: { name: true } } },
   });
@@ -30,7 +29,7 @@ export default async function SectionsPage() {
     label: `${s.course.name} — ${s.academicYear.name} — Sem ${s.number}`,
   }));
 
-  const sections = await prisma.section.findMany({
+  const sections = await ctx.db.section.findMany({
     orderBy: { name: "asc" },
     include: {
       semester: { include: { course: { select: { name: true } }, academicYear: { select: { name: true } } } },

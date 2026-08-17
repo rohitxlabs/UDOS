@@ -24,6 +24,10 @@ async function main() {
   });
   console.log(`Platform Super Admin ready: ${superAdmin.username}`);
 
+  // "users"/"roles"/"settings"/"auditLogs" are core tenant self-admin, not
+  // gate-able platform modules — remove any stale catalog rows for them.
+  await prisma.module.deleteMany({ where: { key: { in: ["users", "roles", "settings", "auditLogs"] } } });
+
   for (const key of GATED_MODULES) {
     await prisma.module.upsert({
       where: { key },

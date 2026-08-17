@@ -66,7 +66,13 @@ async function setSessionCookie(sessionToken: string, expiresAt: number) {
   });
 }
 
-export async function createSession(payload: Omit<SessionPayload, "expiresAt">) {
+// Plain Omit doesn't distribute over a union — it collapses SessionPayload
+// to the intersection of its branches' keys first, which would let callers
+// pass a PLATFORM payload missing `collegeId` and a TENANT payload missing
+// `platformRole` without a type error. Distribute manually instead.
+type NewSession = { [K in SessionPayload["scope"]]: Omit<Extract<SessionPayload, { scope: K }>, "expiresAt"> }[SessionPayload["scope"]];
+
+export async function createSession(payload: NewSession) {
   const expiresAt = Date.now() + SESSION_DURATION_MS;
   const sessionToken = await encrypt({ ...payload, expiresAt } as SessionPayload);
   await setSessionCookie(sessionToken, expiresAt);

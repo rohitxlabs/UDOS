@@ -1,13 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { CreateSubjectButton } from "./subject-form";
 import { SubjectsTable } from "./subjects-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function SubjectsPage() {
-  await requireCapability("subjects", "view");
+  const ctx = await requireCapability("subjects", "view");
 
-  const semesters = await prisma.semester.findMany({
+  const semesters = await ctx.db.semester.findMany({
     orderBy: [{ course: { name: "asc" } }, { number: "asc" }],
     include: { course: { select: { name: true } }, academicYear: { select: { name: true } } },
   });
@@ -30,7 +29,7 @@ export default async function SubjectsPage() {
     label: `${s.course.name} — ${s.academicYear.name} — Sem ${s.number}`,
   }));
 
-  const subjects = await prisma.subject.findMany({
+  const subjects = await ctx.db.subject.findMany({
     orderBy: { name: "asc" },
     include: {
       semester: { include: { course: { select: { name: true } }, academicYear: { select: { name: true } } } },

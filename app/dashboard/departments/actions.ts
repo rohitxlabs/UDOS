@@ -2,14 +2,12 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
   id: z.string().optional(),
-  collegeId: z.string().min(1),
   name: z.string().trim().min(2, "Name is required"),
   code: z
     .string()
@@ -21,26 +19,25 @@ const schema = z.object({
 export type DepartmentState = { error?: string; success?: boolean };
 
 export async function saveDepartment(_prev: DepartmentState, formData: FormData): Promise<DepartmentState> {
-  const session = await requireCapability("departments", formData.get("id") ? "edit" : "create");
+  const ctx = await requireCapability("departments", formData.get("id") ? "edit" : "create");
 
   const parsed = schema.safeParse({
     id: formData.get("id") || undefined,
-    collegeId: formData.get("collegeId"),
     name: formData.get("name"),
     code: formData.get("code"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const { id, collegeId, name, code } = parsed.data;
+  const { id, name, code } = parsed.data;
 
   try {
     const dept = id
-      ? await prisma.department.update({ where: { id }, data: { name, code } })
-      : await prisma.department.create({ data: { name, code, collegeId } });
+      ? await ctx.db.department.update({ where: { id }, data: { name, code } })
+      : await ctx.db.department.create({ data: { name, code } });
 
-    await writeAuditLog({
-      userId: session.userId,
-      role: session.role,
+    await writeTenantAuditLog(ctx.db, {
+      userId: ctx.userId,
+      roleName: ctx.roleName,
       action: id ? "DEPARTMENT_UPDATED" : "DEPARTMENT_CREATED",
       module: "departments",
       recordId: dept.id,
@@ -58,17 +55,17 @@ export async function saveDepartment(_prev: DepartmentState, formData: FormData)
 }
 
 export async function deleteDepartment(id: string) {
-  const session = await requireCapability("departments", "delete");
+  const ctx = await requireCapability("departments", "delete");
 
   try {
-    await prisma.department.delete({ where: { id } });
+    await ctx.db.department.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "department"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "DEPARTMENT_DELETED",
     module: "departments",
     recordId: id,

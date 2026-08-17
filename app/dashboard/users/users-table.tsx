@@ -5,14 +5,12 @@ import { toast } from "sonner";
 import { KeyRound, Ban, CheckCircle2 } from "lucide-react";
 import { toggleUserActive, resetUserPassword } from "./actions";
 import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
-import { ROLE_LABELS } from "@/lib/permissions";
-import type { Role } from "@/app/generated/prisma/client";
 
 export type UserRow = {
   id: string;
   name: string;
   username: string;
-  role: Role;
+  roleName: string | null;
   email: string | null;
   phone: string | null;
   isActive: boolean;
@@ -71,7 +69,7 @@ export function UsersTable({ users, currentUserId }: { users: UserRow[]; current
             <tr key={user.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium text-slate-900">{user.name}</td>
               <td className="px-4 py-3 text-slate-600">{user.username}</td>
-              <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[user.role]}</td>
+              <td className="px-4 py-3 text-slate-600">{user.roleName ?? "—"}</td>
               <td className="px-4 py-3 text-slate-600">
                 {user.email || user.phone || <span className="text-slate-400">—</span>}
               </td>

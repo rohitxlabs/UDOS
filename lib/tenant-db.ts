@@ -102,7 +102,12 @@ export function getTenantClient(collegeId: string, encryptedDatabaseUrl: string)
   if (clientCache.size >= MAX_CACHED_CLIENTS) evictLeastRecentlyUsed();
 
   const url = decryptDatabaseUrl(encryptedDatabaseUrl);
-  const adapter = new PrismaPg({ connectionString: url });
+  // The `?schema=` query param is a CLI/migration-time convention (honored
+  // by `prisma db push`/`migrate deploy`) — the runtime driver adapter
+  // needs the same namespace passed explicitly, or it silently falls back
+  // to Postgres's default `public` schema.
+  const schema = new URL(url).searchParams.get("schema") ?? undefined;
+  const adapter = new PrismaPg({ connectionString: url }, schema ? { schema } : undefined);
   const client = new TenantPrismaClient({ adapter });
   clientCache.set(collegeId, { client, lastUsed: Date.now() });
   return client;

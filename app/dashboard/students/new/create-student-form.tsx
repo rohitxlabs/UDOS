@@ -10,7 +10,13 @@ import { TextField, SelectField, FormError, SubmitButton } from "@/components/da
 
 const initialState: CreateStudentState = {};
 
-export function CreateStudentForm({ courses }: { courses: CourseTree[] }) {
+export function CreateStudentForm({
+  courses,
+  roles,
+}: {
+  courses: CourseTree[];
+  roles: { id: string; name: string }[];
+}) {
   const [state, formAction, pending] = useActionState(createStudent, initialState);
   const [advanced, setAdvanced] = useState(false);
   const router = useRouter();
@@ -37,6 +43,16 @@ export function CreateStudentForm({ courses }: { courses: CourseTree[] }) {
           <TextField id="rollNumber" label="Roll number (optional)" />
         </div>
         <TextField id="admissionDate" label="Admission date" type="date" />
+        <SelectField id="roleId" label="Role" defaultValue="" required>
+          <option value="" disabled>
+            Select a role
+          </option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </SelectField>
       </section>
 
       <section className="flex flex-col gap-4 border-t border-slate-100 pt-6">

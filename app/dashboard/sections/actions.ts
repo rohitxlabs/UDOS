@@ -2,9 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -20,7 +19,7 @@ const schema = z.object({
 export type SectionState = { error?: string; success?: boolean };
 
 export async function saveSection(_prev: SectionState, formData: FormData): Promise<SectionState> {
-  const session = await requireCapability("sections", formData.get("id") ? "edit" : "create");
+  const ctx = await requireCapability("sections", formData.get("id") ? "edit" : "create");
 
   const parsed = schema.safeParse({
     id: formData.get("id") || undefined,
@@ -33,12 +32,12 @@ export async function saveSection(_prev: SectionState, formData: FormData): Prom
 
   try {
     const section = id
-      ? await prisma.section.update({ where: { id }, data: { name, semesterId } })
-      : await prisma.section.create({ data: { name, semesterId } });
+      ? await ctx.db.section.update({ where: { id }, data: { name, semesterId } })
+      : await ctx.db.section.create({ data: { name, semesterId } });
 
-    await writeAuditLog({
-      userId: session.userId,
-      role: session.role,
+    await writeTenantAuditLog(ctx.db, {
+      userId: ctx.userId,
+      roleName: ctx.roleName,
       action: id ? "SECTION_UPDATED" : "SECTION_CREATED",
       module: "sections",
       recordId: section.id,
@@ -56,17 +55,17 @@ export async function saveSection(_prev: SectionState, formData: FormData): Prom
 }
 
 export async function deleteSection(id: string) {
-  const session = await requireCapability("sections", "delete");
+  const ctx = await requireCapability("sections", "delete");
 
   try {
-    await prisma.section.delete({ where: { id } });
+    await ctx.db.section.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "section"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "SECTION_DELETED",
     module: "sections",
     recordId: id,

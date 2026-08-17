@@ -1,7 +1,6 @@
-import { getCurrentUser } from "@/lib/auth/dal";
-import { prisma } from "@/lib/prisma";
-import { can, ROLE_LABELS } from "@/lib/permissions";
-import { Users, ShieldCheck, Building2, Activity } from "lucide-react";
+import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
+import { Users, ShieldCheck, GraduationCap, Activity } from "lucide-react";
 
 const ICON_STYLES = {
   blue: "bg-blue-50 text-blue-600",
@@ -35,15 +34,17 @@ function StatCard({
 }
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  const canViewUsers = can(user.role, "users", "view");
+  const ctx = await requireTenant();
+  const canViewUsers = can(ctx, "users", "view");
+  const canViewStudents = can(ctx, "students", "view");
+  const canViewAuditLogs = can(ctx, "auditLogs", "view");
 
-  const [userCount, activeUserCount, collegeCount, recentLogs] = await Promise.all([
-    canViewUsers ? prisma.user.count() : Promise.resolve(null),
-    canViewUsers ? prisma.user.count({ where: { isActive: true } }) : Promise.resolve(null),
-    canViewUsers ? prisma.college.count() : Promise.resolve(null),
-    can(user.role, "auditLogs", "view")
-      ? prisma.auditLog.findMany({
+  const [userCount, activeUserCount, studentCount, recentLogs] = await Promise.all([
+    canViewUsers ? ctx.db.user.count() : Promise.resolve(null),
+    canViewUsers ? ctx.db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
+    canViewStudents ? ctx.db.student.count() : Promise.resolve(null),
+    canViewAuditLogs
+      ? ctx.db.auditLog.findMany({
           orderBy: { createdAt: "desc" },
           take: 8,
           include: { user: { select: { name: true, username: true } } },
@@ -51,23 +52,25 @@ export default async function DashboardPage() {
       : Promise.resolve([]),
   ]);
 
+  const hasAnyStats = canViewUsers || canViewStudents;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-semibold text-slate-900">Welcome back, {user.name.split(" ")[0]}</h1>
-        <p className="text-sm text-slate-500">Signed in as {ROLE_LABELS[user.role]}.</p>
+        <h1 className="text-lg font-semibold text-slate-900">Welcome back, {ctx.name.split(" ")[0]}</h1>
+        <p className="text-sm text-slate-500">Signed in as {ctx.roleName ?? "—"} at {ctx.college.name}.</p>
       </div>
 
-      {canViewUsers && (
+      {hasAnyStats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total users" value={userCount ?? 0} icon={Users} tone="blue" />
-          <StatCard label="Active users" value={activeUserCount ?? 0} icon={ShieldCheck} tone="emerald" />
-          <StatCard label="Colleges configured" value={collegeCount ?? 0} icon={Building2} tone="violet" />
-          <StatCard label="Your role" value={ROLE_LABELS[user.role]} icon={Activity} tone="amber" />
+          {canViewUsers && <StatCard label="Total users" value={userCount ?? 0} icon={Users} tone="blue" />}
+          {canViewUsers && <StatCard label="Active users" value={activeUserCount ?? 0} icon={ShieldCheck} tone="emerald" />}
+          {canViewStudents && <StatCard label="Students" value={studentCount ?? 0} icon={GraduationCap} tone="violet" />}
+          <StatCard label="Your role" value={ctx.roleName ?? "—"} icon={Activity} tone="amber" />
         </div>
       )}
 
-      {can(user.role, "auditLogs", "view") && (
+      {canViewAuditLogs && (
         <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <h2 className="text-sm font-semibold text-slate-900">Recent activity</h2>
@@ -90,9 +93,9 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {!canViewUsers && !can(user.role, "auditLogs", "view") && (
+      {!hasAnyStats && !canViewAuditLogs && (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-          Your role-specific dashboard modules will appear here as they are enabled for {ROLE_LABELS[user.role]}.
+          Your role-specific dashboard modules will appear here as they are enabled for {ctx.roleName ?? "your role"}.
         </div>
       )}
     </div>

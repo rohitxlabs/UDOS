@@ -1,11 +1,17 @@
-import { getCurrentUser } from "@/lib/auth/dal";
+import { requireTenant } from "@/lib/auth/dal";
 import { DashboardShell } from "@/components/dashboard/shell";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
-  const user = await getCurrentUser();
+  const ctx = await requireTenant();
 
   return (
-    <DashboardShell role={user.role} name={user.name}>
+    <DashboardShell
+      collegeName={ctx.college.name}
+      name={ctx.name}
+      roleName={ctx.roleName}
+      enabledModules={[...ctx.enabledModules]}
+      permissions={[...ctx.permissions]}
+    >
       {children}
     </DashboardShell>
   );

@@ -2,9 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z
@@ -22,7 +21,7 @@ const schema = z
 export type AcademicYearState = { error?: string; success?: boolean };
 
 export async function saveAcademicYear(_prev: AcademicYearState, formData: FormData): Promise<AcademicYearState> {
-  const session = await requireCapability("academicYears", formData.get("id") ? "edit" : "create");
+  const ctx = await requireCapability("academicYears", formData.get("id") ? "edit" : "create");
 
   const parsed = schema.safeParse({
     id: formData.get("id") || undefined,
@@ -37,12 +36,12 @@ export async function saveAcademicYear(_prev: AcademicYearState, formData: FormD
 
   try {
     const year = id
-      ? await prisma.academicYear.update({ where: { id }, data })
-      : await prisma.academicYear.create({ data });
+      ? await ctx.db.academicYear.update({ where: { id }, data })
+      : await ctx.db.academicYear.create({ data });
 
-    await writeAuditLog({
-      userId: session.userId,
-      role: session.role,
+    await writeTenantAuditLog(ctx.db, {
+      userId: ctx.userId,
+      roleName: ctx.roleName,
       action: id ? "ACADEMIC_YEAR_UPDATED" : "ACADEMIC_YEAR_CREATED",
       module: "academicYears",
       recordId: year.id,
@@ -60,16 +59,16 @@ export async function saveAcademicYear(_prev: AcademicYearState, formData: FormD
 }
 
 export async function setCurrentAcademicYear(id: string) {
-  const session = await requireCapability("academicYears", "edit");
+  const ctx = await requireCapability("academicYears", "edit");
 
-  await prisma.$transaction([
-    prisma.academicYear.updateMany({ data: { isCurrent: false }, where: { isCurrent: true } }),
-    prisma.academicYear.update({ where: { id }, data: { isCurrent: true } }),
+  await ctx.db.$transaction([
+    ctx.db.academicYear.updateMany({ data: { isCurrent: false }, where: { isCurrent: true } }),
+    ctx.db.academicYear.update({ where: { id }, data: { isCurrent: true } }),
   ]);
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "ACADEMIC_YEAR_SET_CURRENT",
     module: "academicYears",
     recordId: id,
@@ -79,17 +78,17 @@ export async function setCurrentAcademicYear(id: string) {
 }
 
 export async function deleteAcademicYear(id: string) {
-  const session = await requireCapability("academicYears", "delete");
+  const ctx = await requireCapability("academicYears", "delete");
 
   try {
-    await prisma.academicYear.delete({ where: { id } });
+    await ctx.db.academicYear.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "academic year"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "ACADEMIC_YEAR_DELETED",
     module: "academicYears",
     recordId: id,

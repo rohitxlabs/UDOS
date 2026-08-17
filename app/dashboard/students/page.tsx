@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { StudentsTable } from "./students-table";
-import type { Prisma } from "@/app/generated/prisma/client";
+import type { Prisma } from "@/app/generated/tenant-prisma/client";
 
 const PAGE_SIZE = 20;
 
 export default async function StudentsPage({ searchParams }: PageProps<"/dashboard/students">) {
-  const session = await requireCapability("students", "view");
+  const ctx = await requireCapability("students", "view");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
   const courseId = typeof params.course === "string" ? params.course : "";
@@ -33,15 +32,15 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
   };
 
   const [students, total, courses] = await Promise.all([
-    prisma.student.findMany({
+    ctx.db.student.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: { user: { select: { name: true } }, course: { select: { name: true } }, section: { select: { name: true } } },
     }),
-    prisma.student.count({ where }),
-    prisma.course.findMany({ orderBy: { name: "asc" } }),
+    ctx.db.student.count({ where }),
+    ctx.db.course.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -53,7 +52,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
           <h1 className="text-lg font-semibold text-slate-900">Students</h1>
           <p className="text-sm text-slate-500">{total} student{total === 1 ? "" : "s"} enrolled.</p>
         </div>
-        {can(session.role, "students", "create") && (
+        {can(ctx, "students", "create") && (
           <Link
             href="/dashboard/students/new"
             className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"

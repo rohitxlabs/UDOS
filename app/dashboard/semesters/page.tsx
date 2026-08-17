@@ -1,15 +1,14 @@
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { GenerateSemestersButton } from "./generate-form";
 import { SemestersTable } from "./semesters-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function SemestersPage() {
-  await requireCapability("semesters", "view");
+  const ctx = await requireCapability("semesters", "view");
 
   const [courses, academicYears] = await Promise.all([
-    prisma.course.findMany({ orderBy: { name: "asc" } }),
-    prisma.academicYear.findMany({ orderBy: { startDate: "desc" } }),
+    ctx.db.course.findMany({ orderBy: { name: "asc" } }),
+    ctx.db.academicYear.findMany({ orderBy: { startDate: "desc" } }),
   ]);
 
   if (courses.length === 0 || academicYears.length === 0) {
@@ -25,7 +24,7 @@ export default async function SemestersPage() {
     );
   }
 
-  const semesters = await prisma.semester.findMany({
+  const semesters = await ctx.db.semester.findMany({
     orderBy: [{ course: { name: "asc" } }, { number: "asc" }],
     include: {
       course: { select: { name: true } },

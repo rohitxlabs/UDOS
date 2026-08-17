@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { ROLE_LABELS } from "@/lib/permissions";
 
 const PAGE_SIZE = 25;
 
 export default async function AuditLogsPage({ searchParams }: PageProps<"/dashboard/audit-logs">) {
-  await requireCapability("auditLogs", "view");
+  const ctx = await requireCapability("auditLogs", "view");
   const params = await searchParams;
   const moduleFilter = typeof params.module === "string" ? params.module : "";
   const page = Math.max(1, Number(params.page) || 1);
@@ -14,15 +12,15 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
   const where = moduleFilter ? { module: moduleFilter } : {};
 
   const [logs, total, modules] = await Promise.all([
-    prisma.auditLog.findMany({
+    ctx.db.auditLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: { user: { select: { name: true, username: true } } },
     }),
-    prisma.auditLog.count({ where }),
-    prisma.auditLog.findMany({ distinct: ["module"], select: { module: true } }),
+    ctx.db.auditLog.count({ where }),
+    ctx.db.auditLog.findMany({ distinct: ["module"], select: { module: true } }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -80,7 +78,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
                 <td className="px-4 py-3 text-slate-900">
                   {log.user ? `${log.user.name} (${log.user.username})` : "System"}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{log.role ? ROLE_LABELS[log.role] : "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{log.roleName ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{log.action.replaceAll("_", " ").toLowerCase()}</td>
                 <td className="px-4 py-3 text-slate-600">{log.module}</td>
               </tr>

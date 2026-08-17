@@ -11,6 +11,7 @@ import {
   Layers,
   Rows3,
   NotebookText,
+  ShieldCheck,
 } from "lucide-react";
 import type { Module } from "@/lib/permissions";
 
@@ -50,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Administration",
     items: [
       { href: "/dashboard/users", label: "Users", icon: Users, module: "users" },
+      { href: "/dashboard/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
       { href: "/dashboard/audit-logs", label: "Audit Logs", icon: ScrollText, module: "auditLogs" },
       { href: "/dashboard/settings", label: "College Settings", icon: Settings, module: "settings" },
     ],

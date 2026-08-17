@@ -1,15 +1,14 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { EditFacultyForm } from "./edit-faculty-form";
 import { AssignmentsPanel } from "./assignments-panel";
 
 export default async function FacultyDetailPage({ params }: PageProps<"/dashboard/faculty/[id]">) {
-  await requireCapability("faculty", "view");
+  const ctx = await requireCapability("faculty", "view");
   const { id } = await params;
 
   const [teacher, departments, semesters] = await Promise.all([
-    prisma.teacher.findUnique({
+    ctx.db.teacher.findUnique({
       where: { id },
       include: {
         user: true,
@@ -21,8 +20,8 @@ export default async function FacultyDetailPage({ params }: PageProps<"/dashboar
         },
       },
     }),
-    prisma.department.findMany({ orderBy: { name: "asc" } }),
-    prisma.semester.findMany({
+    ctx.db.department.findMany({ orderBy: { name: "asc" } }),
+    ctx.db.semester.findMany({
       orderBy: [{ course: { name: "asc" } }, { number: "asc" }],
       include: {
         course: { select: { name: true } },

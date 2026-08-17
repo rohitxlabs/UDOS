@@ -2,11 +2,10 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { createLoginAccount } from "@/lib/provisioning";
 import { hashPassword, generatePassword } from "@/lib/password";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const emptyToUndefined = (value: unknown) => (value === "" || value === null ? undefined : value);
@@ -14,6 +13,7 @@ const emptyToUndefined = (value: unknown) => (value === "" || value === null ? u
 const createSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   employeeId: z.string().trim().min(1, "Employee ID is required"),
+  roleId: z.string().trim().min(1, "Role is required"),
   departmentId: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   designation: z.preprocess(emptyToUndefined, z.string().trim().optional()),
   qualification: z.preprocess(emptyToUndefined, z.string().trim().optional()),
@@ -33,11 +33,12 @@ export type CreateFacultyState = {
 };
 
 export async function createFaculty(_prev: CreateFacultyState, formData: FormData): Promise<CreateFacultyState> {
-  const session = await requireCapability("faculty", "create");
+  const ctx = await requireCapability("faculty", "create");
 
   const parsed = createSchema.safeParse({
     name: formData.get("name"),
     employeeId: formData.get("employeeId"),
+    roleId: formData.get("roleId"),
     departmentId: formData.get("departmentId"),
     designation: formData.get("designation"),
     qualification: formData.get("qualification"),
@@ -49,21 +50,32 @@ export async function createFaculty(_prev: CreateFacultyState, formData: FormDat
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const { name, employeeId, departmentId, designation, qualification, joiningDate, email, phone, customUsername, customPassword } =
-    parsed.data;
+  const {
+    name,
+    employeeId,
+    roleId,
+    departmentId,
+    designation,
+    qualification,
+    joiningDate,
+    email,
+    phone,
+    customUsername,
+    customPassword,
+  } = parsed.data;
 
-  const existingEmployee = await prisma.teacher.findUnique({ where: { employeeId } });
+  const existingEmployee = await ctx.db.teacher.findUnique({ where: { employeeId } });
   if (existingEmployee) return { error: `Employee ID "${employeeId}" is already in use` };
 
-  const result = await prisma.$transaction(async (tx) => {
-    const account = await createLoginAccount(tx, {
+  const result = await ctx.db.$transaction(async (tx) => {
+    const account = await createLoginAccount(ctx.collegeId, tx, {
       name,
-      role: "TEACHER",
+      roleId,
       email,
       phone,
       customUsername,
       customPassword,
-      createdById: session.userId,
+      createdById: ctx.userId,
     });
     if ("error" in account) return account;
 
@@ -83,9 +95,9 @@ export async function createFaculty(_prev: CreateFacultyState, formData: FormDat
 
   if ("error" in result) return { error: result.error };
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "FACULTY_CREATED",
     module: "faculty",
     recordId: result.teacherId,
@@ -111,7 +123,7 @@ const updateSchema = z.object({
 export type UpdateFacultyState = { error?: string; success?: boolean };
 
 export async function updateFaculty(_prev: UpdateFacultyState, formData: FormData): Promise<UpdateFacultyState> {
-  const session = await requireCapability("faculty", "edit");
+  const ctx = await requireCapability("faculty", "edit");
 
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
@@ -128,23 +140,23 @@ export async function updateFaculty(_prev: UpdateFacultyState, formData: FormDat
 
   const { id, name, employeeId, departmentId, designation, qualification, joiningDate, email, phone } = parsed.data;
 
-  const teacher = await prisma.teacher.findUnique({ where: { id } });
+  const teacher = await ctx.db.teacher.findUnique({ where: { id } });
   if (!teacher) return { error: "Faculty member not found" };
 
-  const duplicateEmployee = await prisma.teacher.findFirst({ where: { employeeId, NOT: { id } } });
+  const duplicateEmployee = await ctx.db.teacher.findFirst({ where: { employeeId, NOT: { id } } });
   if (duplicateEmployee) return { error: `Employee ID "${employeeId}" is already in use` };
 
-  await prisma.$transaction([
-    prisma.teacher.update({
+  await ctx.db.$transaction([
+    ctx.db.teacher.update({
       where: { id },
       data: { employeeId, departmentId, designation, qualification, joiningDate: joiningDate ? new Date(joiningDate) : null },
     }),
-    prisma.user.update({ where: { id: teacher.userId }, data: { name, email: email || null, phone: phone || null } }),
+    ctx.db.user.update({ where: { id: teacher.userId }, data: { name, email: email || null, phone: phone || null } }),
   ]);
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "FACULTY_UPDATED",
     module: "faculty",
     recordId: id,
@@ -157,14 +169,14 @@ export async function updateFaculty(_prev: UpdateFacultyState, formData: FormDat
 }
 
 export async function toggleFacultyActive(id: string, nextActive: boolean) {
-  const session = await requireCapability("faculty", "edit");
-  const teacher = await prisma.teacher.findUniqueOrThrow({ where: { id } });
+  const ctx = await requireCapability("faculty", "edit");
+  const teacher = await ctx.db.teacher.findUniqueOrThrow({ where: { id } });
 
-  await prisma.user.update({ where: { id: teacher.userId }, data: { isActive: nextActive } });
+  await ctx.db.user.update({ where: { id: teacher.userId }, data: { isActive: nextActive } });
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: nextActive ? "FACULTY_ACTIVATED" : "FACULTY_DEACTIVATED",
     module: "faculty",
     recordId: id,
@@ -175,10 +187,10 @@ export async function toggleFacultyActive(id: string, nextActive: boolean) {
 }
 
 export async function assignFacultySubject(teacherId: string, subjectId: string, sectionId: string) {
-  const session = await requireCapability("faculty", "edit");
+  const ctx = await requireCapability("faculty", "edit");
 
   try {
-    await prisma.facultySubject.create({ data: { teacherId, subjectId, sectionId } });
+    await ctx.db.facultySubject.create({ data: { teacherId, subjectId, sectionId } });
   } catch (err) {
     if (err instanceof Error && "code" in err && (err as { code: string }).code === "P2002") {
       throw new Error("This teacher is already assigned to that subject and section");
@@ -186,9 +198,9 @@ export async function assignFacultySubject(teacherId: string, subjectId: string,
     throw err;
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "FACULTY_SUBJECT_ASSIGNED",
     module: "faculty",
     recordId: teacherId,
@@ -199,17 +211,17 @@ export async function assignFacultySubject(teacherId: string, subjectId: string,
 }
 
 export async function unassignFacultySubject(facultySubjectId: string, teacherId: string) {
-  const session = await requireCapability("faculty", "edit");
+  const ctx = await requireCapability("faculty", "edit");
 
   try {
-    await prisma.facultySubject.delete({ where: { id: facultySubjectId } });
+    await ctx.db.facultySubject.delete({ where: { id: facultySubjectId } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "assignment"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "FACULTY_SUBJECT_UNASSIGNED",
     module: "faculty",
     recordId: teacherId,
@@ -219,17 +231,17 @@ export async function unassignFacultySubject(facultySubjectId: string, teacherId
 }
 
 export async function resetFacultyPassword(id: string): Promise<{ password: string }> {
-  const session = await requireCapability("faculty", "edit");
-  const teacher = await prisma.teacher.findUniqueOrThrow({ where: { id } });
+  const ctx = await requireCapability("faculty", "edit");
+  const teacher = await ctx.db.teacher.findUniqueOrThrow({ where: { id } });
 
   const password = generatePassword();
   const passwordHash = await hashPassword(password);
 
-  await prisma.user.update({ where: { id: teacher.userId }, data: { passwordHash, mustChangePassword: true } });
+  await ctx.db.user.update({ where: { id: teacher.userId }, data: { passwordHash, mustChangePassword: true } });
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "FACULTY_PASSWORD_RESET",
     module: "faculty",
     recordId: id,

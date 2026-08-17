@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FacultyTable } from "./faculty-table";
 
 export default async function FacultyPage({ searchParams }: PageProps<"/dashboard/faculty">) {
-  const session = await requireCapability("faculty", "view");
+  const ctx = await requireCapability("faculty", "view");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
 
-  const faculty = await prisma.teacher.findMany({
+  const faculty = await ctx.db.teacher.findMany({
     where: q
       ? {
           user: {
@@ -32,10 +31,10 @@ export default async function FacultyPage({ searchParams }: PageProps<"/dashboar
           <h1 className="text-lg font-semibold text-slate-900">Faculty</h1>
           <p className="text-sm text-slate-500">Teachers and their department assignments.</p>
         </div>
-        {can(session.role, "faculty", "create") && (
+        {can(ctx, "faculty", "create") && (
           <Link
             href="/dashboard/faculty/new"
-            className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             New faculty

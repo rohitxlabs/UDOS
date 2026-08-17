@@ -10,15 +10,7 @@ export type DepartmentEditTarget = { id: string; name: string; code: string };
 
 const initialState: DepartmentState = {};
 
-function DepartmentFormFields({
-  collegeId,
-  target,
-  onDone,
-}: {
-  collegeId: string;
-  target?: DepartmentEditTarget;
-  onDone: () => void;
-}) {
+function DepartmentFormFields({ target, onDone }: { target?: DepartmentEditTarget; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(saveDepartment, initialState);
   useEffect(() => {
     if (state.success) onDone();
@@ -27,7 +19,6 @@ function DepartmentFormFields({
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <input type="hidden" name="collegeId" value={collegeId} />
       {target && <input type="hidden" name="id" value={target.id} />}
       <TextField id="name" label="Department name" placeholder="Computer Science" defaultValue={target?.name} required />
       <TextField id="code" label="Code" placeholder="CSE" defaultValue={target?.code} required />
@@ -40,27 +31,27 @@ function DepartmentFormFields({
   );
 }
 
-export function CreateDepartmentButton({ collegeId }: { collegeId: string }) {
+export function CreateDepartmentButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         <Plus className="h-4 w-4" />
         New department
       </button>
       {open && (
         <Modal title="New department" onClose={() => setOpen(false)}>
-          <DepartmentFormFields collegeId={collegeId} onDone={() => setOpen(false)} />
+          <DepartmentFormFields onDone={() => setOpen(false)} />
         </Modal>
       )}
     </>
   );
 }
 
-export function EditDepartmentButton({ collegeId, target }: { collegeId: string; target: DepartmentEditTarget }) {
+export function EditDepartmentButton({ target }: { target: DepartmentEditTarget }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -73,7 +64,7 @@ export function EditDepartmentButton({ collegeId, target }: { collegeId: string;
       </button>
       {open && (
         <Modal title="Edit department" onClose={() => setOpen(false)}>
-          <DepartmentFormFields collegeId={collegeId} target={target} onDone={() => setOpen(false)} />
+          <DepartmentFormFields target={target} onDone={() => setOpen(false)} />
         </Modal>
       )}
     </>

@@ -1,15 +1,14 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { EditStudentForm } from "./edit-student-form";
 
 export default async function StudentDetailPage({ params }: PageProps<"/dashboard/students/[id]">) {
-  await requireCapability("students", "view");
+  const ctx = await requireCapability("students", "view");
   const { id } = await params;
 
   const [student, courses] = await Promise.all([
-    prisma.student.findUnique({ where: { id }, include: { user: true } }),
-    prisma.course.findMany({
+    ctx.db.student.findUnique({ where: { id }, include: { user: true } }),
+    ctx.db.course.findMany({
       orderBy: { name: "asc" },
       include: {
         semesters: {

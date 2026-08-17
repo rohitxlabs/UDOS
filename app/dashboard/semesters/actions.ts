@@ -2,9 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const generateSchema = z.object({
@@ -18,7 +17,7 @@ export async function generateSemesters(
   _prev: GenerateSemestersState,
   formData: FormData
 ): Promise<GenerateSemestersState> {
-  const session = await requireCapability("semesters", "create");
+  const ctx = await requireCapability("semesters", "create");
 
   const parsed = generateSchema.safeParse({
     courseId: formData.get("courseId"),
@@ -28,10 +27,10 @@ export async function generateSemesters(
 
   const { courseId, academicYearId } = parsed.data;
 
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  const course = await ctx.db.course.findUnique({ where: { id: courseId } });
   if (!course) return { error: "Course not found" };
 
-  const existing = await prisma.semester.findMany({
+  const existing = await ctx.db.semester.findMany({
     where: { courseId, academicYearId },
     select: { number: true },
   });
@@ -44,7 +43,7 @@ export async function generateSemesters(
     return { error: "All semesters for this course and academic year already exist" };
   }
 
-  await prisma.semester.createMany({
+  await ctx.db.semester.createMany({
     data: toCreate.map((number) => ({
       courseId,
       academicYearId,
@@ -53,9 +52,9 @@ export async function generateSemesters(
     })),
   });
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "SEMESTERS_GENERATED",
     module: "semesters",
     recordId: courseId,
@@ -67,17 +66,17 @@ export async function generateSemesters(
 }
 
 export async function deleteSemester(id: string) {
-  const session = await requireCapability("semesters", "delete");
+  const ctx = await requireCapability("semesters", "delete");
 
   try {
-    await prisma.semester.delete({ where: { id } });
+    await ctx.db.semester.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "semester"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "SEMESTER_DELETED",
     module: "semesters",
     recordId: id,

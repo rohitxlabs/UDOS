@@ -9,7 +9,13 @@ import { TextField, SelectField, FormError, SubmitButton } from "@/components/da
 
 const initialState: CreateFacultyState = {};
 
-export function CreateFacultyForm({ departments }: { departments: { id: string; name: string }[] }) {
+export function CreateFacultyForm({
+  departments,
+  roles,
+}: {
+  departments: { id: string; name: string }[];
+  roles: { id: string; name: string }[];
+}) {
   const [state, formAction, pending] = useActionState(createFaculty, initialState);
   const [advanced, setAdvanced] = useState(false);
   const router = useRouter();
@@ -32,14 +38,26 @@ export function CreateFacultyForm({ departments }: { departments: { id: string; 
         <TextField id="employeeId" label="Employee ID" required />
       </div>
 
-      <SelectField id="departmentId" label="Department" defaultValue="">
-        <option value="">Not assigned yet</option>
-        {departments.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.name}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SelectField id="departmentId" label="Department" defaultValue="">
+          <option value="">Not assigned yet</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField id="roleId" label="Role" defaultValue="" required>
+          <option value="" disabled>
+            Select a role
           </option>
-        ))}
-      </SelectField>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </SelectField>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField id="designation" label="Designation" placeholder="Assistant Professor" />

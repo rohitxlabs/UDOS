@@ -2,9 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z
@@ -29,7 +28,7 @@ const schema = z
 export type SubjectState = { error?: string; success?: boolean };
 
 export async function saveSubject(_prev: SubjectState, formData: FormData): Promise<SubjectState> {
-  const session = await requireCapability("subjects", formData.get("id") ? "edit" : "create");
+  const ctx = await requireCapability("subjects", formData.get("id") ? "edit" : "create");
 
   const parsed = schema.safeParse({
     id: formData.get("id") || undefined,
@@ -44,22 +43,22 @@ export async function saveSubject(_prev: SubjectState, formData: FormData): Prom
 
   const { id, semesterId, name, code, credits, maxMarks, passMarks } = parsed.data;
 
-  const semester = await prisma.semester.findUnique({ where: { id: semesterId } });
+  const semester = await ctx.db.semester.findUnique({ where: { id: semesterId } });
   if (!semester) return { error: "Semester not found" };
 
   try {
     const subject = id
-      ? await prisma.subject.update({
+      ? await ctx.db.subject.update({
           where: { id },
           data: { name, code, credits, maxMarks, passMarks, semesterId, courseId: semester.courseId },
         })
-      : await prisma.subject.create({
+      : await ctx.db.subject.create({
           data: { name, code, credits, maxMarks, passMarks, semesterId, courseId: semester.courseId },
         });
 
-    await writeAuditLog({
-      userId: session.userId,
-      role: session.role,
+    await writeTenantAuditLog(ctx.db, {
+      userId: ctx.userId,
+      roleName: ctx.roleName,
       action: id ? "SUBJECT_UPDATED" : "SUBJECT_CREATED",
       module: "subjects",
       recordId: subject.id,
@@ -77,17 +76,17 @@ export async function saveSubject(_prev: SubjectState, formData: FormData): Prom
 }
 
 export async function deleteSubject(id: string) {
-  const session = await requireCapability("subjects", "delete");
+  const ctx = await requireCapability("subjects", "delete");
 
   try {
-    await prisma.subject.delete({ where: { id } });
+    await ctx.db.subject.delete({ where: { id } });
   } catch (err) {
     throw new Error(friendlyDeleteError(err, "subject"));
   }
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "SUBJECT_DELETED",
     module: "subjects",
     recordId: id,

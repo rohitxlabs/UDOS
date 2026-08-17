@@ -71,13 +71,20 @@ export const MODULE_LABELS: Record<Module, string> = {
   settings: "Settings",
 };
 
+// Core tenant self-administration — always available once a college
+// exists at all, never subject to the platform's per-module toggle (a
+// College Admin must always be able to manage their own users/roles even
+// if the platform admin forgot to tick a box for it). Only "dashboard" and
+// these are exempt from Layer 1; everything else is a real business
+// module the platform explicitly grants.
+const UNGATED_MODULES: Module[] = ["dashboard", "users", "roles", "settings", "auditLogs"];
+
 // Modules a college can actually be granted by the platform (i.e. that a
-// real screen exists for). Kept separate from MODULES because MODULES also
-// includes "dashboard" and other always-on/ungated concepts.
-export const GATED_MODULES: Module[] = MODULES.filter((m) => m !== "dashboard");
+// real screen exists for).
+export const GATED_MODULES: Module[] = MODULES.filter((m) => !UNGATED_MODULES.includes(m));
 
 export function hasModule(enabledModules: Set<string>, moduleKey: Module): boolean {
-  return enabledModules.has(moduleKey);
+  return UNGATED_MODULES.includes(moduleKey) || enabledModules.has(moduleKey);
 }
 
 export function permissionKey(moduleKey: Module, action: Capability): string {

@@ -65,7 +65,7 @@ export async function createCollege(_prev: CreateCollegeState, formData: FormDat
     await pg.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
     await pg.end();
 
-    execFileSync("npx", ["prisma", "db", "push", "--config", "prisma/tenant/prisma.config.ts", "--skip-generate"], {
+    execFileSync("npx", ["prisma", "db", "push", "--config", "prisma/tenant/prisma.config.ts"], {
       cwd: process.cwd(),
       env: { ...process.env, TENANT_DATABASE_URL: tenantUrl },
       stdio: "pipe",
@@ -161,11 +161,11 @@ export async function toggleCollegeActive(collegeId: string, nextActive: boolean
 
 export async function updateCollegeModules(collegeId: string, moduleKey: string, enabled: boolean) {
   const ctx = await requirePlatform();
-  const module = await platformDb.module.findUniqueOrThrow({ where: { key: moduleKey } });
+  const targetModule = await platformDb.module.findUniqueOrThrow({ where: { key: moduleKey } });
 
   if (enabled) {
     const dependencies = await platformDb.moduleDependency.findMany({
-      where: { moduleId: module.id },
+      where: { moduleId: targetModule.id },
       include: { dependsOnModule: true },
     });
     for (const dep of dependencies) {
@@ -173,12 +173,12 @@ export async function updateCollegeModules(collegeId: string, moduleKey: string,
         where: { collegeId_moduleId: { collegeId, moduleId: dep.dependsOnId } },
       });
       if (!depEnabled?.enabled) {
-        throw new Error(`"${module.name}" depends on "${dep.dependsOnModule.name}" — enable that first`);
+        throw new Error(`"${targetModule.name}" depends on "${dep.dependsOnModule.name}" — enable that first`);
       }
     }
   } else {
     const dependents = await platformDb.moduleDependency.findMany({
-      where: { dependsOnId: module.id },
+      where: { dependsOnId: targetModule.id },
       include: { module: true },
     });
     for (const dependent of dependents) {
@@ -192,9 +192,15 @@ export async function updateCollegeModules(collegeId: string, moduleKey: string,
   }
 
   await platformDb.tenantModule.upsert({
-    where: { collegeId_moduleId: { collegeId, moduleId: module.id } },
+    where: { collegeId_moduleId: { collegeId, moduleId: targetModule.id } },
     update: { enabled, enabledAt: enabled ? new Date() : null, enabledById: enabled ? ctx.userId : null },
-    create: { collegeId, moduleId: module.id, enabled, enabledAt: enabled ? new Date() : null, enabledById: ctx.userId },
+    create: {
+      collegeId,
+      moduleId: targetModule.id,
+      enabled,
+      enabledAt: enabled ? new Date() : null,
+      enabledById: ctx.userId,
+    },
   });
 
   await writePlatformAuditLog({

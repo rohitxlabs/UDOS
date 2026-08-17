@@ -1,12 +1,11 @@
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { CreateAcademicYearButton } from "./academic-year-form";
 import { AcademicYearsTable } from "./academic-years-table";
 
 export default async function AcademicYearsPage() {
-  await requireCapability("academicYears", "view");
+  const ctx = await requireCapability("academicYears", "view");
 
-  const years = await prisma.academicYear.findMany({ orderBy: { startDate: "desc" } });
+  const years = await ctx.db.academicYear.findMany({ orderBy: { startDate: "desc" } });
 
   return (
     <div className="flex flex-col gap-5">

@@ -13,7 +13,7 @@ export type DepartmentRow = {
   studentCount: number;
 };
 
-export function DepartmentsTable({ departments, collegeId }: { departments: DepartmentRow[]; collegeId: string }) {
+export function DepartmentsTable({ departments }: { departments: DepartmentRow[] }) {
   return (
     <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
       <table className="w-full min-w-[560px] text-left text-sm">
@@ -42,7 +42,7 @@ export function DepartmentsTable({ departments, collegeId }: { departments: Depa
               <td className="px-4 py-3 text-slate-600">{dept.studentCount}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-1">
-                  <EditDepartmentButton collegeId={collegeId} target={{ id: dept.id, name: dept.name, code: dept.code }} />
+                  <EditDepartmentButton target={{ id: dept.id, name: dept.name, code: dept.code }} />
                   <ConfirmButton
                     title={`Delete ${dept.name}?`}
                     description="This cannot be undone. Deletion will fail if courses or students still reference this department."

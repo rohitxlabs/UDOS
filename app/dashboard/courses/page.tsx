@@ -1,13 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { CreateCourseButton } from "./course-form";
 import { CoursesTable } from "./courses-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function CoursesPage() {
-  await requireCapability("courses", "view");
+  const ctx = await requireCapability("courses", "view");
 
-  const departments = await prisma.department.findMany({ orderBy: { name: "asc" } });
+  const departments = await ctx.db.department.findMany({ orderBy: { name: "asc" } });
 
   if (departments.length === 0) {
     return (
@@ -22,7 +21,7 @@ export default async function CoursesPage() {
     );
   }
 
-  const courses = await prisma.course.findMany({
+  const courses = await ctx.db.course.findMany({
     orderBy: { name: "asc" },
     include: { department: { select: { name: true } }, _count: { select: { students: true } } },
   });

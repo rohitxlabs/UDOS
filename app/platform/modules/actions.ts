@@ -41,7 +41,7 @@ export async function createModule(_prev: CreateModuleState, formData: FormData)
     ? await platformDb.module.findMany({ where: { key: { in: dependsOnKeys } } })
     : [];
 
-  const module = await platformDb.module.create({
+  const createdModule = await platformDb.module.create({
     data: {
       key,
       name,
@@ -54,7 +54,7 @@ export async function createModule(_prev: CreateModuleState, formData: FormData)
     userId: ctx.userId,
     action: "MODULE_CREATED",
     module: "modules",
-    recordId: module.id,
+    recordId: createdModule.id,
     newValue: { key, name },
   });
 
@@ -64,13 +64,13 @@ export async function createModule(_prev: CreateModuleState, formData: FormData)
 
 export async function toggleModuleActive(moduleId: string, nextActive: boolean) {
   const ctx = await requirePlatform();
-  const module = await platformDb.module.update({ where: { id: moduleId }, data: { isActive: nextActive } });
+  const updatedModule = await platformDb.module.update({ where: { id: moduleId }, data: { isActive: nextActive } });
 
   await writePlatformAuditLog({
     userId: ctx.userId,
     action: nextActive ? "MODULE_CATALOG_ACTIVATED" : "MODULE_CATALOG_DEACTIVATED",
     module: "modules",
-    recordId: module.id,
+    recordId: updatedModule.id,
   });
 
   revalidatePath("/platform/modules");

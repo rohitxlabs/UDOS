@@ -2,11 +2,11 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { createLoginAccount } from "@/lib/provisioning";
 import { hashPassword, generatePassword } from "@/lib/password";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
+import type { PrismaClient as TenantPrismaClient } from "@/app/generated/tenant-prisma/client";
 
 const emptyToUndefined = (value: unknown) => (value === "" || value === null ? undefined : value);
 const GENDERS = ["MALE", "FEMALE", "OTHER"] as const;
@@ -36,6 +36,7 @@ const baseFields = {
 
 const createSchema = z.object({
   ...baseFields,
+  roleId: z.string().trim().min(1, "Role is required"),
   customUsername: z.preprocess(emptyToUndefined, z.string().trim().optional()),
   customPassword: z.preprocess(
     emptyToUndefined,
@@ -48,40 +49,40 @@ export type CreateStudentState = {
   success?: { username: string; password: string; name: string };
 };
 
-async function resolveSection(sectionId: string) {
-  return prisma.section.findUnique({
+async function resolveSection(db: TenantPrismaClient, sectionId: string) {
+  return db.section.findUnique({
     where: { id: sectionId },
     include: { semester: { include: { course: true } } },
   });
 }
 
 export async function createStudent(_prev: CreateStudentState, formData: FormData): Promise<CreateStudentState> {
-  const session = await requireCapability("students", "create");
+  const ctx = await requireCapability("students", "create");
 
   const parsed = createSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const data = parsed.data;
 
-  const existingAdmission = await prisma.student.findUnique({ where: { admissionNumber: data.admissionNumber } });
+  const existingAdmission = await ctx.db.student.findUnique({ where: { admissionNumber: data.admissionNumber } });
   if (existingAdmission) return { error: `Admission number "${data.admissionNumber}" is already in use` };
 
   if (data.enrollmentNumber) {
-    const existingEnrollment = await prisma.student.findUnique({ where: { enrollmentNumber: data.enrollmentNumber } });
+    const existingEnrollment = await ctx.db.student.findUnique({ where: { enrollmentNumber: data.enrollmentNumber } });
     if (existingEnrollment) return { error: `Enrollment number "${data.enrollmentNumber}" is already in use` };
   }
 
-  const section = await resolveSection(data.sectionId);
+  const section = await resolveSection(ctx.db, data.sectionId);
   if (!section) return { error: "Section not found" };
 
-  const result = await prisma.$transaction(async (tx) => {
-    const account = await createLoginAccount(tx, {
+  const result = await ctx.db.$transaction(async (tx) => {
+    const account = await createLoginAccount(ctx.collegeId, tx, {
       name: data.name,
-      role: "STUDENT",
+      roleId: data.roleId,
       email: data.email,
       phone: data.phone,
       customUsername: data.customUsername,
       customPassword: data.customPassword,
-      createdById: session.userId,
+      createdById: ctx.userId,
     });
     if ("error" in account) return account;
 
@@ -118,9 +119,9 @@ export async function createStudent(_prev: CreateStudentState, formData: FormDat
 
   if ("error" in result) return { error: result.error };
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "STUDENT_CREATED",
     module: "students",
     recordId: result.studentId,
@@ -140,25 +141,25 @@ const updateSchema = z.object({
 export type UpdateStudentState = { error?: string; success?: boolean };
 
 export async function updateStudent(_prev: UpdateStudentState, formData: FormData): Promise<UpdateStudentState> {
-  const session = await requireCapability("students", "edit");
+  const ctx = await requireCapability("students", "edit");
 
   const parsed = updateSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const data = parsed.data;
 
-  const student = await prisma.student.findUnique({ where: { id: data.id } });
+  const student = await ctx.db.student.findUnique({ where: { id: data.id } });
   if (!student) return { error: "Student not found" };
 
-  const duplicateAdmission = await prisma.student.findFirst({
+  const duplicateAdmission = await ctx.db.student.findFirst({
     where: { admissionNumber: data.admissionNumber, NOT: { id: data.id } },
   });
   if (duplicateAdmission) return { error: `Admission number "${data.admissionNumber}" is already in use` };
 
-  const section = await resolveSection(data.sectionId);
+  const section = await resolveSection(ctx.db, data.sectionId);
   if (!section) return { error: "Section not found" };
 
-  await prisma.$transaction([
-    prisma.student.update({
+  await ctx.db.$transaction([
+    ctx.db.student.update({
       where: { id: data.id },
       data: {
         admissionNumber: data.admissionNumber,
@@ -185,15 +186,15 @@ export async function updateStudent(_prev: UpdateStudentState, formData: FormDat
         status: data.status,
       },
     }),
-    prisma.user.update({
+    ctx.db.user.update({
       where: { id: student.userId },
       data: { name: data.name, email: data.email || null, phone: data.phone || null },
     }),
   ]);
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "STUDENT_UPDATED",
     module: "students",
     recordId: data.id,
@@ -206,17 +207,17 @@ export async function updateStudent(_prev: UpdateStudentState, formData: FormDat
 }
 
 export async function resetStudentPassword(id: string): Promise<{ password: string }> {
-  const session = await requireCapability("students", "edit");
-  const student = await prisma.student.findUniqueOrThrow({ where: { id } });
+  const ctx = await requireCapability("students", "edit");
+  const student = await ctx.db.student.findUniqueOrThrow({ where: { id } });
 
   const password = generatePassword();
   const passwordHash = await hashPassword(password);
 
-  await prisma.user.update({ where: { id: student.userId }, data: { passwordHash, mustChangePassword: true } });
+  await ctx.db.user.update({ where: { id: student.userId }, data: { passwordHash, mustChangePassword: true } });
 
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "STUDENT_PASSWORD_RESET",
     module: "students",
     recordId: id,

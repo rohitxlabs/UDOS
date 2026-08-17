@@ -1,0 +1,82 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { Plus, Loader2, Pencil } from "lucide-react";
+import { saveDepartment, type DepartmentState } from "./actions";
+import { Modal } from "@/components/dashboard/modal";
+import { TextField, FormError, SubmitButton } from "@/components/dashboard/form-field";
+
+export type DepartmentEditTarget = { id: string; name: string; code: string };
+
+const initialState: DepartmentState = {};
+
+function DepartmentFormFields({
+  collegeId,
+  target,
+  onDone,
+}: {
+  collegeId: string;
+  target?: DepartmentEditTarget;
+  onDone: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(saveDepartment, initialState);
+  const [lastSuccess, setLastSuccess] = useState(state.success);
+  if (state.success !== lastSuccess) {
+    setLastSuccess(state.success);
+    if (state.success) onDone();
+  }
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="collegeId" value={collegeId} />
+      {target && <input type="hidden" name="id" value={target.id} />}
+      <TextField id="name" label="Department name" placeholder="Computer Science" defaultValue={target?.name} required />
+      <TextField id="code" label="Code" placeholder="CSE" defaultValue={target?.code} required />
+      <FormError message={state.error} />
+      <SubmitButton pending={pending}>
+        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {target ? "Save changes" : "Create department"}
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function CreateDepartmentButton({ collegeId }: { collegeId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+      >
+        <Plus className="h-4 w-4" />
+        New department
+      </button>
+      {open && (
+        <Modal title="New department" onClose={() => setOpen(false)}>
+          <DepartmentFormFields collegeId={collegeId} onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
+export function EditDepartmentButton({ collegeId, target }: { collegeId: string; target: DepartmentEditTarget }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Edit"
+        className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      {open && (
+        <Modal title="Edit department" onClose={() => setOpen(false)}>
+          <DepartmentFormFields collegeId={collegeId} target={target} onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}

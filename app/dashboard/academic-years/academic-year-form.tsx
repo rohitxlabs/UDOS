@@ -1,0 +1,85 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { Plus, Loader2, Pencil } from "lucide-react";
+import { saveAcademicYear, type AcademicYearState } from "./actions";
+import { Modal } from "@/components/dashboard/modal";
+import { TextField, FormError, SubmitButton } from "@/components/dashboard/form-field";
+
+export type AcademicYearEditTarget = {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+};
+
+const initialState: AcademicYearState = {};
+
+function toDateInput(value: string) {
+  return value ? value.slice(0, 10) : "";
+}
+
+function AcademicYearFormFields({ target, onDone }: { target?: AcademicYearEditTarget; onDone: () => void }) {
+  const [state, formAction, pending] = useActionState(saveAcademicYear, initialState);
+  const [lastSuccess, setLastSuccess] = useState(state.success);
+  if (state.success !== lastSuccess) {
+    setLastSuccess(state.success);
+    if (state.success) onDone();
+  }
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      {target && <input type="hidden" name="id" value={target.id} />}
+      <TextField id="name" label="Name" placeholder="2026-27" defaultValue={target?.name} required />
+      <div className="grid grid-cols-2 gap-3">
+        <TextField id="startDate" label="Start date" type="date" defaultValue={toDateInput(target?.startDate ?? "")} required />
+        <TextField id="endDate" label="End date" type="date" defaultValue={toDateInput(target?.endDate ?? "")} required />
+      </div>
+      <FormError message={state.error} />
+      <SubmitButton pending={pending}>
+        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {target ? "Save changes" : "Create academic year"}
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function CreateAcademicYearButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+      >
+        <Plus className="h-4 w-4" />
+        New academic year
+      </button>
+      {open && (
+        <Modal title="New academic year" onClose={() => setOpen(false)}>
+          <AcademicYearFormFields onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
+export function EditAcademicYearButton({ target }: { target: AcademicYearEditTarget }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        title="Edit"
+        className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      {open && (
+        <Modal title="Edit academic year" onClose={() => setOpen(false)}>
+          <AcademicYearFormFields target={target} onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}

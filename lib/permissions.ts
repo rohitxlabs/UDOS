@@ -10,6 +10,9 @@ export const MODULES = [
   "faculty",
   "departments",
   "courses",
+  "academicYears",
+  "semesters",
+  "sections",
   "subjects",
   "attendance",
   "assignments",
@@ -48,6 +51,9 @@ const MATRIX: Record<Role, ModulePermissions> = {
     faculty: VIEW,
     departments: VIEW,
     courses: VIEW,
+    academicYears: VIEW,
+    semesters: VIEW,
+    sections: VIEW,
     subjects: VIEW,
     attendance: VIEW,
     assignments: VIEW,
@@ -70,6 +76,7 @@ const MATRIX: Record<Role, ModulePermissions> = {
   TEACHER: {
     dashboard: VIEW,
     students: VIEW,
+    subjects: VIEW,
     attendance: ["view", "create", "edit"],
     assignments: ["view", "create", "edit"],
     exams: VIEW,
@@ -94,6 +101,7 @@ const MATRIX: Record<Role, ModulePermissions> = {
   EXAM_CELL: {
     dashboard: VIEW,
     students: VIEW,
+    subjects: VIEW,
     exams: ["view", "create", "edit"],
     marks: ["view", "create", "edit", "approve"],
     results: ["view", "create", "edit", "approve"],
@@ -154,7 +162,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 // stays safe to import from client components — importing the generated
 // Prisma client's runtime enum drags Node-only internals into the browser
 // bundle and crashes the client build.
-export const STAFF_CREATABLE_ROLES: Role[] = ["SUPER_ADMIN", "MANAGEMENT", "TEACHER", "ACCOUNTS", "EXAM_CELL"];
+// Teacher, Student and Parent accounts are provisioned with their profile
+// records (Faculty / Student Management) rather than here, since those
+// roles need a linked Teacher/Student/Parent row to function.
+export const STAFF_CREATABLE_ROLES: Role[] = ["SUPER_ADMIN", "MANAGEMENT", "ACCOUNTS", "EXAM_CELL"];
 
 export const ROLE_HOME: Record<Role, string> = {
   SUPER_ADMIN: "/dashboard",

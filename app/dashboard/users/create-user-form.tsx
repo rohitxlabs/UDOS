@@ -45,7 +45,7 @@ export function CreateUserForm() {
               </button>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              Student and Parent logins are created automatically from Admissions.
+              Teacher, Student and Parent logins are created from Faculty / Student Management.
             </p>
 
             <form action={formAction} className="mt-4 flex flex-col gap-3">

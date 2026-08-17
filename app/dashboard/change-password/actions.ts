@@ -2,11 +2,10 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { verifySession } from "@/lib/auth/dal";
+import { requireTenant } from "@/lib/auth/dal";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/auth/session";
-import { writeAuditLog } from "@/lib/audit";
+import { writeTenantAuditLog } from "@/lib/audit";
 
 const schema = z
   .object({
@@ -27,7 +26,7 @@ export async function changePassword(
   _prevState: ChangePasswordState,
   formData: FormData
 ): Promise<ChangePasswordState> {
-  const session = await verifySession();
+  const ctx = await requireTenant();
 
   const parsed = schema.safeParse({
     currentPassword: formData.get("currentPassword"),
@@ -39,7 +38,7 @@ export async function changePassword(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
+  const user = await ctx.db.user.findUniqueOrThrow({ where: { id: ctx.userId } });
 
   const valid = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
   if (!valid) {
@@ -47,22 +46,26 @@ export async function changePassword(
   }
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
-  const updated = await prisma.user.update({
+  const updated = await ctx.db.user.update({
     where: { id: user.id },
     data: { passwordHash, mustChangePassword: false },
   });
 
   await createSession({
-    id: updated.id,
-    role: updated.role,
+    scope: "TENANT",
+    userId: updated.id,
     username: updated.username,
     name: updated.name,
+    collegeId: ctx.collegeId,
+    collegeSlug: ctx.college.slug,
+    roleId: updated.roleId,
+    roleName: ctx.roleName,
     mustChangePassword: false,
   });
 
-  await writeAuditLog({
+  await writeTenantAuditLog(ctx.db, {
     userId: user.id,
-    role: user.role,
+    roleName: ctx.roleName,
     action: "PASSWORD_CHANGED",
     module: "auth",
     recordId: user.id,

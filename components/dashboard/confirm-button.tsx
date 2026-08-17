@@ -43,14 +43,14 @@ export function ConfirmButton({
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setOpen(false)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={pending}
-              className="flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              className="flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
             >
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {confirmLabel}

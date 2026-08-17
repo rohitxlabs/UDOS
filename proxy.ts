@@ -13,25 +13,35 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = await decrypt(token);
 
-  if (pathname.startsWith("/dashboard") && !session) {
+  const wantsDashboard = pathname.startsWith("/dashboard");
+  const wantsPlatform = pathname.startsWith("/platform");
+
+  if ((wantsDashboard || wantsPlatform) && !session) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname === "/login" && session) {
+  if (session && wantsDashboard && session.scope !== "TENANT") {
+    return NextResponse.redirect(new URL("/platform", request.url));
+  }
+
+  if (session && wantsPlatform && session.scope !== "PLATFORM") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (
-    session?.mustChangePassword &&
-    pathname.startsWith("/dashboard") &&
-    pathname !== "/dashboard/change-password"
-  ) {
-    return NextResponse.redirect(new URL("/dashboard/change-password", request.url));
+  if (pathname === "/login" && session) {
+    return NextResponse.redirect(new URL(session.scope === "PLATFORM" ? "/platform" : "/dashboard", request.url));
+  }
+
+  if (session?.mustChangePassword) {
+    const changePasswordPath = session.scope === "PLATFORM" ? "/platform/change-password" : "/dashboard/change-password";
+    if ((wantsDashboard || wantsPlatform) && pathname !== changePasswordPath) {
+      return NextResponse.redirect(new URL(changePasswordPath, request.url));
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/platform/:path*", "/login"],
 };

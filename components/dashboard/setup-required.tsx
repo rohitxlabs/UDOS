@@ -3,11 +3,11 @@ import { ArrowRight } from "lucide-react";
 
 export function SetupRequired({ message, href, cta }: { message: string; href: string; cta: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
       <p className="text-sm text-slate-500">{message}</p>
       <Link
         href={href}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         {cta}
         <ArrowRight className="h-4 w-4" />

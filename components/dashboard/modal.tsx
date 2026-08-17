@@ -18,7 +18,7 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl`}>
+      <div className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl`}>
         <div className="flex items-start justify-between">
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700">

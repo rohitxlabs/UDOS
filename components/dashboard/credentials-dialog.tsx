@@ -43,7 +43,7 @@ export function CredentialsDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <h2 className="text-base font-semibold text-slate-900">Credentials for {name}</h2>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700">
@@ -59,7 +59,7 @@ export function CredentialsDialog({
         </div>
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-5 w-full rounded-full bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
         >
           Done
         </button>

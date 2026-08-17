@@ -2,17 +2,24 @@
 
 import { redirect } from "next/navigation";
 import { deleteSession } from "@/lib/auth/session";
-import { verifySession } from "@/lib/auth/dal";
-import { writeAuditLog } from "@/lib/audit";
+import { getAccessContext } from "@/lib/auth/dal";
+import { writePlatformAuditLog, writeTenantAuditLog } from "@/lib/audit";
 
 export async function logout() {
-  const session = await verifySession();
-  await writeAuditLog({
-    userId: session.userId,
-    role: session.role,
+  const ctx = await getAccessContext();
+
+  if (ctx.scope === "PLATFORM") {
+    await writePlatformAuditLog({ userId: ctx.userId, action: "LOGOUT", module: "auth", recordId: ctx.userId });
+    await deleteSession();
+    redirect("/login");
+  }
+
+  await writeTenantAuditLog(ctx.db, {
+    userId: ctx.userId,
+    roleName: ctx.roleName,
     action: "LOGOUT",
     module: "auth",
-    recordId: session.userId,
+    recordId: ctx.userId,
   });
   await deleteSession();
   redirect("/login");

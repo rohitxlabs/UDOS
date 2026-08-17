@@ -1,7 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import type { Role } from "@/app/generated/prisma/client";
+import type { PlatformRole } from "@/app/generated/prisma/client";
 
 const secretKey = process.env.AUTH_SECRET;
 if (!secretKey) throw new Error("AUTH_SECRET environment variable is not set");
@@ -10,14 +10,32 @@ const encodedKey = new TextEncoder().encode(secretKey);
 const SESSION_COOKIE = "erp_session";
 const SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
 
-export type SessionPayload = {
-  userId: string;
-  role: Role;
-  username: string;
-  name: string;
-  mustChangePassword: boolean;
-  expiresAt: number;
-};
+// Two completely separate identity spaces share one login form (spec
+// section 16): a platform admin's session vs a college's own user session.
+// Which branch applies is decided once, at login, from which database the
+// username was found in — never trusted from client input afterwards.
+export type SessionPayload =
+  | {
+      scope: "PLATFORM";
+      userId: string;
+      username: string;
+      name: string;
+      platformRole: PlatformRole;
+      mustChangePassword: boolean;
+      expiresAt: number;
+    }
+  | {
+      scope: "TENANT";
+      userId: string;
+      username: string;
+      name: string;
+      collegeId: string;
+      collegeSlug: string;
+      roleId: string | null;
+      roleName: string | null;
+      mustChangePassword: boolean;
+      expiresAt: number;
+    };
 
 export async function encrypt(payload: SessionPayload) {
   return new SignJWT({ ...payload })
@@ -37,23 +55,7 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   }
 }
 
-export async function createSession(user: {
-  id: string;
-  role: Role;
-  username: string;
-  name: string;
-  mustChangePassword: boolean;
-}) {
-  const expiresAt = Date.now() + SESSION_DURATION_MS;
-  const sessionToken = await encrypt({
-    userId: user.id,
-    role: user.role,
-    username: user.username,
-    name: user.name,
-    mustChangePassword: user.mustChangePassword,
-    expiresAt,
-  });
-
+async function setSessionCookie(sessionToken: string, expiresAt: number) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, sessionToken, {
     httpOnly: true,
@@ -64,6 +66,12 @@ export async function createSession(user: {
   });
 }
 
+export async function createSession(payload: Omit<SessionPayload, "expiresAt">) {
+  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  const sessionToken = await encrypt({ ...payload, expiresAt } as SessionPayload);
+  await setSessionCookie(sessionToken, expiresAt);
+}
+
 export async function getSessionCookie() {
   const cookieStore = await cookies();
   return cookieStore.get(SESSION_COOKIE)?.value;
@@ -72,20 +80,4 @@ export async function getSessionCookie() {
 export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
-}
-
-export async function refreshSession() {
-  const token = await getSessionCookie();
-  const payload = await decrypt(token);
-  if (!token || !payload) return;
-
-  const expiresAt = Date.now() + SESSION_DURATION_MS;
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: new Date(expiresAt),
-    path: "/",
-  });
 }

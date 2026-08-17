@@ -57,13 +57,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/dashboard/
             name="q"
             defaultValue={q}
             placeholder="Search by name, username or email"
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+            className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
           />
         </div>
         <select
           name="role"
           defaultValue={roleFilter}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All roles</option>
           {Object.entries(ROLE_LABELS).map(([value, label]) => (
@@ -74,7 +74,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/dashboard/
         </select>
         <button
           type="submit"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Filter
         </button>

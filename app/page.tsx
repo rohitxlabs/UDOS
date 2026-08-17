@@ -4,5 +4,6 @@ import { decrypt, getSessionCookie } from "@/lib/auth/session";
 export default async function RootPage() {
   const token = await getSessionCookie();
   const session = await decrypt(token);
-  redirect(session ? "/dashboard" : "/login");
+  if (!session) redirect("/login");
+  redirect(session.scope === "PLATFORM" ? "/platform" : "/dashboard");
 }

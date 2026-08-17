@@ -61,7 +61,7 @@ export function AssignmentsPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900">Subject assignments</h2>
       <p className="mt-1 text-sm text-slate-500">Which subjects and sections this teacher is authorized to teach.</p>
 
@@ -116,7 +116,7 @@ export function AssignmentsPanel({
       <button
         onClick={handleAssign}
         disabled={pending || !subjectId || !sectionId}
-        className="mt-3 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="mt-3 flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         Assign

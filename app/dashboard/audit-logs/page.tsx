@@ -38,7 +38,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
         <select
           name="module"
           defaultValue={moduleFilter}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All modules</option>
           {modules.map((m) => (
@@ -49,13 +49,13 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
         </select>
         <button
           type="submit"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Filter
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

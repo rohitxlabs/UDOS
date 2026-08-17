@@ -1,8 +1,10 @@
-import type { Role } from "@/app/generated/prisma/client";
-
-// Central role → module capability matrix (spec section 27).
-// Server actions and route handlers must check this — never rely on the
-// sidebar hiding a link as the only protection.
+// Two-level access model (see the platform spec):
+//   Layer 1 — is this module even enabled for the tenant? (Platform Super Admin)
+//   Layer 2 — does this user's role have this action on that module? (College Admin)
+// Both layers are precomputed once per request into plain Sets by
+// lib/auth/dal.ts's getAccessContext(), so everything in this file is a
+// synchronous, dependency-free Set lookup — safe to call from Server
+// Components for conditional rendering as well as from server actions.
 
 export const MODULES = [
   "dashboard",
@@ -31,148 +33,67 @@ export const MODULES = [
   "reports",
   "auditLogs",
   "users",
+  "roles",
   "settings",
 ] as const;
 
 export type Module = (typeof MODULES)[number];
-export type Capability = "view" | "create" | "edit" | "delete" | "approve";
+export type Capability = "view" | "create" | "edit" | "delete" | "approve" | "export" | "print";
 
-type ModulePermissions = Partial<Record<Module, Capability[]>>;
-
-const ALL: Capability[] = ["view", "create", "edit", "delete", "approve"];
-const VIEW: Capability[] = ["view"];
-
-const MATRIX: Record<Role, ModulePermissions> = {
-  SUPER_ADMIN: Object.fromEntries(MODULES.map((m) => [m, ALL])) as ModulePermissions,
-
-  MANAGEMENT: {
-    dashboard: VIEW,
-    students: VIEW,
-    faculty: VIEW,
-    departments: VIEW,
-    courses: VIEW,
-    academicYears: VIEW,
-    semesters: VIEW,
-    sections: VIEW,
-    subjects: VIEW,
-    attendance: VIEW,
-    assignments: VIEW,
-    exams: VIEW,
-    marks: ["view", "approve"],
-    results: ["view", "approve"],
-    admitCards: ["view", "approve"],
-    fees: VIEW,
-    payments: VIEW,
-    scholarships: ["view", "approve"],
-    timetable: VIEW,
-    leave: ["view", "approve"],
-    notices: ["view", "create", "edit"],
-    library: VIEW,
-    documents: VIEW,
-    reports: VIEW,
-    auditLogs: VIEW,
-  },
-
-  TEACHER: {
-    dashboard: VIEW,
-    students: VIEW,
-    subjects: VIEW,
-    attendance: ["view", "create", "edit"],
-    assignments: ["view", "create", "edit"],
-    exams: VIEW,
-    marks: ["view", "create", "edit"],
-    results: VIEW,
-    timetable: VIEW,
-    leave: ["view", "create"],
-    notices: VIEW,
-    documents: VIEW,
-  },
-
-  ACCOUNTS: {
-    dashboard: VIEW,
-    students: VIEW,
-    fees: ["view", "create", "edit"],
-    payments: ["view", "create", "edit"],
-    scholarships: ["view", "create", "edit"],
-    reports: VIEW,
-    notices: VIEW,
-  },
-
-  EXAM_CELL: {
-    dashboard: VIEW,
-    students: VIEW,
-    subjects: VIEW,
-    exams: ["view", "create", "edit"],
-    marks: ["view", "create", "edit", "approve"],
-    results: ["view", "create", "edit", "approve"],
-    admitCards: ["view", "create", "edit"],
-    reports: VIEW,
-    notices: VIEW,
-  },
-
-  STUDENT: {
-    dashboard: VIEW,
-    attendance: VIEW,
-    assignments: VIEW,
-    exams: VIEW,
-    marks: VIEW,
-    results: VIEW,
-    admitCards: VIEW,
-    fees: VIEW,
-    payments: VIEW,
-    timetable: VIEW,
-    leave: ["view", "create"],
-    notices: VIEW,
-    documents: VIEW,
-    library: VIEW,
-  },
-
-  PARENT: {
-    dashboard: VIEW,
-    attendance: VIEW,
-    assignments: VIEW,
-    results: VIEW,
-    fees: VIEW,
-    notices: VIEW,
-  },
+export const MODULE_LABELS: Record<Module, string> = {
+  dashboard: "Dashboard",
+  students: "Students",
+  faculty: "Faculty",
+  departments: "Departments",
+  courses: "Courses",
+  academicYears: "Academic Years",
+  semesters: "Semesters",
+  sections: "Sections",
+  subjects: "Subjects",
+  attendance: "Attendance",
+  assignments: "Assignments",
+  exams: "Examinations",
+  marks: "Marks",
+  results: "Results",
+  admitCards: "Admit Cards",
+  fees: "Fees",
+  payments: "Payments",
+  scholarships: "Scholarships",
+  timetable: "Timetable",
+  leave: "Leave",
+  notices: "Notices",
+  library: "Library",
+  documents: "Documents",
+  reports: "Reports",
+  auditLogs: "Audit Logs",
+  users: "Users",
+  roles: "Roles & Permissions",
+  settings: "Settings",
 };
 
-export function can(role: Role, moduleName: Module, capability: Capability): boolean {
-  const perms = MATRIX[role]?.[moduleName];
-  return !!perms?.includes(capability);
+// Modules a college can actually be granted by the platform (i.e. that a
+// real screen exists for). Kept separate from MODULES because MODULES also
+// includes "dashboard" and other always-on/ungated concepts.
+export const GATED_MODULES: Module[] = MODULES.filter((m) => m !== "dashboard");
+
+export function hasModule(enabledModules: Set<string>, moduleKey: Module): boolean {
+  return enabledModules.has(moduleKey);
 }
 
-export function assertCan(role: Role, moduleName: Module, capability: Capability) {
-  if (!can(role, moduleName, capability)) {
-    throw new Error(`Forbidden: role ${role} lacks ${capability} on ${moduleName}`);
-  }
+export function permissionKey(moduleKey: Module, action: Capability): string {
+  return `${moduleKey}:${action}`;
 }
 
-export const ROLE_LABELS: Record<Role, string> = {
-  SUPER_ADMIN: "Super Admin",
-  MANAGEMENT: "Management",
-  TEACHER: "Teacher",
-  ACCOUNTS: "Accounts",
-  EXAM_CELL: "Examination Cell",
-  STUDENT: "Student",
-  PARENT: "Parent",
-};
+export function hasPermission(permissions: Set<string>, moduleKey: Module, action: Capability): boolean {
+  return permissions.has(permissionKey(moduleKey, action));
+}
 
-// Plain string literals (not the Prisma-generated enum object) so this
-// stays safe to import from client components — importing the generated
-// Prisma client's runtime enum drags Node-only internals into the browser
-// bundle and crashes the client build.
-// Teacher, Student and Parent accounts are provisioned with their profile
-// records (Faculty / Student Management) rather than here, since those
-// roles need a linked Teacher/Student/Parent row to function.
-export const STAFF_CREATABLE_ROLES: Role[] = ["SUPER_ADMIN", "MANAGEMENT", "ACCOUNTS", "EXAM_CELL"];
-
-export const ROLE_HOME: Record<Role, string> = {
-  SUPER_ADMIN: "/dashboard",
-  MANAGEMENT: "/dashboard",
-  TEACHER: "/dashboard",
-  ACCOUNTS: "/dashboard",
-  EXAM_CELL: "/dashboard",
-  STUDENT: "/dashboard",
-  PARENT: "/dashboard",
-};
+// The combined check most UI code wants: module must be enabled for the
+// tenant AND the caller's role must be granted this action on it.
+export function can(
+  ctx: { enabledModules: Set<string>; permissions: Set<string> },
+  moduleKey: Module,
+  action: Capability
+): boolean {
+  return hasModule(ctx.enabledModules, moduleKey) && hasPermission(ctx.permissions, moduleKey, action);
+}

@@ -44,7 +44,7 @@ function Field({
         type={type}
         required={required}
         defaultValue={defaultValue ?? ""}
-        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+        className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
       />
     </div>
   );
@@ -94,7 +94,7 @@ export function SettingsForm({ college }: { college: College }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 flex w-fit items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className="mt-2 flex w-fit items-center justify-center gap-2 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
         Save settings

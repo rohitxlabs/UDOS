@@ -29,7 +29,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/dashboar
         <p className="mt-1 text-sm text-slate-500">Student profile.</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <EditStudentForm
           courses={courses.map((c) => ({
             id: c.id,

@@ -56,7 +56,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
         {can(session.role, "students", "create") && (
           <Link
             href="/dashboard/students/new"
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             New student
@@ -71,13 +71,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
             name="q"
             defaultValue={q}
             placeholder="Search by name, admission or roll number"
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+            className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
           />
         </div>
         <select
           name="course"
           defaultValue={courseId}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All courses</option>
           {courses.map((c) => (
@@ -89,7 +89,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
         <select
           name="status"
           defaultValue={status}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+          className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>
@@ -98,7 +98,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
         </select>
         <button
           type="submit"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Filter
         </button>

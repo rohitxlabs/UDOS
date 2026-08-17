@@ -23,7 +23,7 @@ export function CoursesTable({
   departments: { id: string; name: string }[];
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
       <table className="w-full min-w-[680px] text-left text-sm">
         <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>

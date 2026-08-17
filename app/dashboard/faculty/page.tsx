@@ -35,7 +35,7 @@ export default async function FacultyPage({ searchParams }: PageProps<"/dashboar
         {can(session.role, "faculty", "create") && (
           <Link
             href="/dashboard/faculty/new"
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             New faculty
@@ -49,7 +49,7 @@ export default async function FacultyPage({ searchParams }: PageProps<"/dashboar
           name="q"
           defaultValue={q}
           placeholder="Search by name or email"
-          className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+          className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         />
       </form>
 

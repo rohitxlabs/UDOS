@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Loader2 } from "lucide-react";
 import { generateSemesters, type GenerateSemestersState } from "./actions";
@@ -21,14 +21,13 @@ function GenerateFormFields({
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState(generateSemesters, initialState);
-  const [lastSuccess, setLastSuccess] = useState(state.success);
-  if (state.success !== lastSuccess) {
-    setLastSuccess(state.success);
+  useEffect(() => {
     if (state.success) {
       toast.success(state.success);
       onDone();
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
@@ -70,7 +69,7 @@ export function GenerateSemestersButton({ courses, academicYears }: { courses: O
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         <Plus className="h-4 w-4" />
         Generate semesters

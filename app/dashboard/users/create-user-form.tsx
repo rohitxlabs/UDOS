@@ -29,7 +29,7 @@ export function CreateUserForm() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         <Plus className="h-4 w-4" />
         New user
@@ -57,7 +57,7 @@ export function CreateUserForm() {
                   id="name"
                   name="name"
                   required
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                 />
               </div>
 
@@ -70,7 +70,7 @@ export function CreateUserForm() {
                   name="role"
                   required
                   defaultValue=""
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                 >
                   <option value="" disabled>
                     Select a role
@@ -92,7 +92,7 @@ export function CreateUserForm() {
                     id="email"
                     name="email"
                     type="email"
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -102,7 +102,7 @@ export function CreateUserForm() {
                   <input
                     id="phone"
                     name="phone"
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                   />
                 </div>
               </div>
@@ -124,7 +124,7 @@ export function CreateUserForm() {
                     <input
                       id="customUsername"
                       name="customUsername"
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -135,7 +135,7 @@ export function CreateUserForm() {
                       id="customPassword"
                       name="customPassword"
                       type="text"
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                     />
                   </div>
                 </div>
@@ -150,7 +150,7 @@ export function CreateUserForm() {
               <button
                 type="submit"
                 disabled={pending}
-                className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
               >
                 {pending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Create account

@@ -7,7 +7,7 @@ export function SetupRequired({ message, href, cta }: { message: string; href: s
       <p className="text-sm text-slate-500">{message}</p>
       <Link
         href={href}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         {cta}
         <ArrowRight className="h-4 w-4" />

@@ -12,7 +12,7 @@ export default async function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
             <GraduationCap className="h-6 w-6" />
           </div>
           <h1 className="text-xl font-semibold text-slate-900">College ERP</h1>

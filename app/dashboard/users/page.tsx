@@ -57,13 +57,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/dashboard/
             name="q"
             defaultValue={q}
             placeholder="Search by name, username or email"
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
           />
         </div>
         <select
           name="role"
           defaultValue={roleFilter}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All roles</option>
           {Object.entries(ROLE_LABELS).map(([value, label]) => (

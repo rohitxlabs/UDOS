@@ -38,7 +38,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
         <select
           name="module"
           defaultValue={moduleFilter}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
         >
           <option value="">All modules</option>
           {modules.map((m) => (
@@ -96,7 +96,7 @@ export default async function AuditLogsPage({ searchParams }: PageProps<"/dashbo
               key={p}
               href={`/dashboard/audit-logs?page=${p}${moduleFilter ? `&module=${moduleFilter}` : ""}`}
               className={`rounded-md px-3 py-1.5 ${
-                p === page ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+                p === page ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               {p}

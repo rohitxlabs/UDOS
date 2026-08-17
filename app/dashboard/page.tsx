@@ -3,14 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { can, ROLE_LABELS } from "@/lib/permissions";
 import { Users, ShieldCheck, Building2, Activity } from "lucide-react";
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: number | string; icon: typeof Users }) {
+const ICON_STYLES = {
+  blue: "bg-blue-50 text-blue-600",
+  violet: "bg-violet-50 text-violet-600",
+  emerald: "bg-emerald-50 text-emerald-600",
+  amber: "bg-amber-50 text-amber-600",
+} as const;
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone = "blue",
+}: {
+  label: string;
+  value: number | string;
+  icon: typeof Users;
+  tone?: keyof typeof ICON_STYLES;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{label}</p>
-        <Icon className="h-4 w-4 text-slate-400" />
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${ICON_STYLES[tone]}`}>
+          <Icon className="h-4 w-4" />
+        </div>
       </div>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-3 text-2xl font-semibold text-slate-900">{value}</p>
     </div>
   );
 }
@@ -41,10 +60,10 @@ export default async function DashboardPage() {
 
       {canViewUsers && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total users" value={userCount ?? 0} icon={Users} />
-          <StatCard label="Active users" value={activeUserCount ?? 0} icon={ShieldCheck} />
-          <StatCard label="Colleges configured" value={collegeCount ?? 0} icon={Building2} />
-          <StatCard label="Your role" value={ROLE_LABELS[user.role]} icon={Activity} />
+          <StatCard label="Total users" value={userCount ?? 0} icon={Users} tone="blue" />
+          <StatCard label="Active users" value={activeUserCount ?? 0} icon={ShieldCheck} tone="emerald" />
+          <StatCard label="Colleges configured" value={collegeCount ?? 0} icon={Building2} tone="violet" />
+          <StatCard label="Your role" value={ROLE_LABELS[user.role]} icon={Activity} tone="amber" />
         </div>
       )}
 

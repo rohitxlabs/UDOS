@@ -59,7 +59,7 @@ export function CredentialsDialog({
         </div>
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="mt-5 w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
         >
           Done
         </button>

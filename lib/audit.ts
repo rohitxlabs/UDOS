@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import type { Role } from "@/app/generated/prisma";
+import type { Role } from "@/app/generated/prisma/client";
 
 export async function writeAuditLog(params: {
   userId: string | null;

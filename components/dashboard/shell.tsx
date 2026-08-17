@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { GraduationCap, Menu, X, LogOut, KeyRound } from "lucide-react";
 import clsx from "clsx";
 import { NAV_ITEMS } from "./nav-items";
-import type { Role } from "@/app/generated/prisma";
+import type { Role } from "@/app/generated/prisma/client";
 import { can, ROLE_LABELS } from "@/lib/permissions";
 import { logout } from "@/lib/auth/actions";
 

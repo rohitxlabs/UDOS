@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { Plus, Loader2, X } from "lucide-react";
 import { createStaffUser, type CreateUserState } from "./actions";
 import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
 import { ROLE_LABELS } from "@/lib/permissions";
-import { Role } from "@/app/generated/prisma";
+import { Role } from "@/app/generated/prisma/client";
 
 const CREATABLE_ROLES: Role[] = [Role.SUPER_ADMIN, Role.MANAGEMENT, Role.TEACHER, Role.ACCOUNTS, Role.EXAM_CELL];
 
@@ -17,12 +17,16 @@ export function CreateUserForm() {
   const [dismissed, setDismissed] = useState(false);
   const [state, formAction, pending] = useActionState(createStaffUser, initialState);
 
-  useEffect(() => {
+  // Adjust state during render (React's recommended alternative to an
+  // effect here) when a new success result arrives from the action.
+  const [lastSuccess, setLastSuccess] = useState(state.success);
+  if (state.success !== lastSuccess) {
+    setLastSuccess(state.success);
     if (state.success) {
       setOpen(false);
       setDismissed(false);
     }
-  }, [state.success]);
+  }
 
   return (
     <>

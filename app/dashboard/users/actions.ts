@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCapability } from "@/lib/auth/dal";
 import { hashPassword, generatePassword, generateUsername } from "@/lib/password";
 import { writeAuditLog } from "@/lib/audit";
-import { Role } from "@/app/generated/prisma";
+import { Role } from "@/app/generated/prisma/client";
 
 // Student and Parent accounts are provisioned through Admissions / Student
 // Management (Phase 2+), where their profile record is created alongside

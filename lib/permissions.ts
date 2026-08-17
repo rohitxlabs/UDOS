@@ -1,4 +1,4 @@
-import type { Role } from "@/app/generated/prisma";
+import type { Role } from "@/app/generated/prisma/client";
 
 // Central role → module capability matrix (spec section 27).
 // Server actions and route handlers must check this — never rely on the

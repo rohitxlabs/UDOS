@@ -1,7 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import type { Role } from "@/app/generated/prisma";
+import type { Role } from "@/app/generated/prisma/client";
 
 const secretKey = process.env.AUTH_SECRET;
 if (!secretKey) throw new Error("AUTH_SECRET environment variable is not set");

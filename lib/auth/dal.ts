@@ -3,7 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { decrypt, getSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import type { Role } from "@/app/generated/prisma";
+import type { Role } from "@/app/generated/prisma/client";
 import { can, type Capability, type Module } from "@/lib/permissions";
 
 // Data Access Layer: the single source of truth for "who is logged in".

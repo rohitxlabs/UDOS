@@ -15,6 +15,7 @@ export type SessionPayload = {
   role: Role;
   username: string;
   name: string;
+  mustChangePassword: boolean;
   expiresAt: number;
 };
 

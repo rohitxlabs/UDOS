@@ -21,6 +21,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  if (
+    session?.mustChangePassword &&
+    pathname.startsWith("/dashboard") &&
+    pathname !== "/dashboard/change-password"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard/change-password", request.url));
+  }
+
   return NextResponse.next();
 }
 

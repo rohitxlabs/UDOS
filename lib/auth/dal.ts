@@ -16,7 +16,14 @@ export const verifySession = cache(async () => {
     redirect("/login");
   }
 
-  return { isAuth: true, userId: payload.userId, role: payload.role, name: payload.name, username: payload.username };
+  return {
+    isAuth: true,
+    userId: payload.userId,
+    role: payload.role,
+    name: payload.name,
+    username: payload.username,
+    mustChangePassword: payload.mustChangePassword,
+  };
 });
 
 export const getCurrentUser = cache(async () => {

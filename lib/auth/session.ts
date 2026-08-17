@@ -37,13 +37,20 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   }
 }
 
-export async function createSession(user: { id: string; role: Role; username: string; name: string }) {
+export async function createSession(user: {
+  id: string;
+  role: Role;
+  username: string;
+  name: string;
+  mustChangePassword: boolean;
+}) {
   const expiresAt = Date.now() + SESSION_DURATION_MS;
   const sessionToken = await encrypt({
     userId: user.id,
     role: user.role,
     username: user.username,
     name: user.name,
+    mustChangePassword: user.mustChangePassword,
     expiresAt,
   });
 

@@ -46,7 +46,13 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
     return { error: "Invalid username or password" };
   }
 
-  await createSession(user);
+  await createSession({
+    id: user.id,
+    role: user.role,
+    username: user.username,
+    name: user.name,
+    mustChangePassword: user.mustChangePassword,
+  });
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await writeAuditLog({
     userId: user.id,

@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { EditFacultyForm } from "./edit-faculty-form";
 import { AssignmentsPanel } from "./assignments-panel";
 
 export default async function FacultyDetailPage({ params }: PageProps<"/dashboard/faculty/[id]">) {
-  const ctx = await requireCapability("faculty", "view");
+  const ctx = await requirePageAccess("faculty", "view");
   const { id } = await params;
 
   const [teacher, departments, semesters] = await Promise.all([

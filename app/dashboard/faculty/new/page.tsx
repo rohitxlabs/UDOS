@@ -1,8 +1,8 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateFacultyForm } from "./create-faculty-form";
 
 export default async function NewFacultyPage() {
-  const ctx = await requireCapability("faculty", "create");
+  const ctx = await requirePageAccess("faculty", "create");
   const [departments, roles] = await Promise.all([
     ctx.db.department.findMany({ orderBy: { name: "asc" } }),
     ctx.db.role.findMany({ orderBy: { name: "asc" } }),

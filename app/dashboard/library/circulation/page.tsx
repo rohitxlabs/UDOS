@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { suggestedFine, toNumber } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/filter-bar";
@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { CirculationTable, type LoanRow } from "./circulation-table";
 
 export default async function CirculationPage({ searchParams }: PageProps<"/dashboard/library/circulation">) {
-  const ctx = await requireCapability("library", "view");
+  const ctx = await requirePageAccess("library", "view");
   const params = await searchParams;
   const status = typeof params.status === "string" ? params.status : "on-loan";
 

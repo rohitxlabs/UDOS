@@ -1,10 +1,10 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateSectionButton } from "./section-form";
 import { SectionsTable } from "./sections-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function SectionsPage() {
-  const ctx = await requireCapability("sections", "view");
+  const ctx = await requirePageAccess("sections", "view");
 
   const semesters = await ctx.db.semester.findMany({
     orderBy: [{ course: { name: "asc" } }, { number: "asc" }],

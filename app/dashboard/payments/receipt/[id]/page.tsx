@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { formatMoney, toNumber } from "@/lib/format";
 import { PrintButton } from "@/components/dashboard/print-button";
 
 export default async function ReceiptPage({ params }: PageProps<"/dashboard/payments/receipt/[id]">) {
-  const ctx = await requireCapability("payments", "print");
+  const ctx = await requirePageAccess("payments", "print");
   const { id } = await params;
 
   const receipt = await ctx.db.receipt.findUnique({

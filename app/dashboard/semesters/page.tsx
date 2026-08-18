@@ -1,10 +1,10 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { GenerateSemestersButton } from "./generate-form";
 import { SemestersTable } from "./semesters-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function SemestersPage() {
-  const ctx = await requireCapability("semesters", "view");
+  const ctx = await requirePageAccess("semesters", "view");
 
   const [courses, academicYears] = await Promise.all([
     ctx.db.course.findMany({ orderBy: { name: "asc" } }),

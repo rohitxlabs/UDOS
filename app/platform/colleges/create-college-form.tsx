@@ -63,6 +63,8 @@ function CreateCollegeFormFields({ modules, onDone }: { modules: ModuleOption[];
         />
       </div>
 
+      <TextField id="email" label="College email (optional)" type="email" placeholder="office@abccollege.edu" />
+
       <TextField
         id="databaseUrl"
         label="Database connection string"
@@ -71,12 +73,32 @@ function CreateCollegeFormFields({ modules, onDone }: { modules: ModuleOption[];
       />
       <p className="-mt-2.5 text-xs text-slate-500">
         A separate Postgres database (or the same server — we&apos;ll namespace it) for this college&apos;s own data.
-        Encrypted at rest; never shown again after this.
+        Every ERP table is created here automatically. Encrypted at rest; never shown again after this.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField id="adminName" label="College Admin name" required />
-        <TextField id="adminEmail" label="College Admin email (optional)" type="email" />
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 p-3">
+        <span className="text-sm font-medium text-slate-700">College Admin account</span>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField id="adminName" label="Name" required />
+          <TextField id="adminEmail" label="Email (optional)" type="email" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField id="adminUsername" label="Login ID (optional)" placeholder="abc.admin" autoComplete="off" />
+          <TextField
+            id="adminPassword"
+            label="Password (optional)"
+            type="text"
+            placeholder="Min 8 characters"
+            autoComplete="new-password"
+          />
+        </div>
+
+        <p className="-mt-1 text-xs text-slate-500">
+          Leave either blank and one is generated for you. Whatever ends up being used is shown once on the next
+          screen — the College Admin is asked to change the password at first sign-in.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">

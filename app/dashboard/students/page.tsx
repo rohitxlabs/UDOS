@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { StudentsTable } from "./students-table";
 import type { Prisma } from "@/app/generated/tenant-prisma/client";
@@ -8,7 +8,7 @@ import type { Prisma } from "@/app/generated/tenant-prisma/client";
 const PAGE_SIZE = 20;
 
 export default async function StudentsPage({ searchParams }: PageProps<"/dashboard/students">) {
-  const ctx = await requireCapability("students", "view");
+  const ctx = await requirePageAccess("students", "view");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
   const courseId = typeof params.course === "string" ? params.course : "";

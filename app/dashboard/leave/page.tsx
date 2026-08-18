@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -8,7 +8,7 @@ import { LeaveTable, type LeaveRow, type LeaveStatusValue } from "./leave-table"
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default async function LeavePage({ searchParams }: PageProps<"/dashboard/leave">) {
-  const ctx = await requireCapability("leave", "view");
+  const ctx = await requirePageAccess("leave", "view");
   const params = await searchParams;
   const statusFilter = typeof params.status === "string" ? params.status : "";
   const scope = typeof params.scope === "string" ? params.scope : "";

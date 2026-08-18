@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState, Badge } from "@/components/dashboard/page-header";
 
 export default async function AttendanceRegisterPage({
   searchParams,
 }: PageProps<"/dashboard/attendance/register">) {
-  const ctx = await requireCapability("attendance", "view");
+  const ctx = await requirePageAccess("attendance", "view");
   const params = await searchParams;
 
   const sectionId = typeof params.section === "string" ? params.section : "";

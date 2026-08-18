@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Paperclip } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { PageHeader, Badge } from "@/components/dashboard/page-header";
 import { SubmissionsPanel, type SubmissionRow, type SubmissionStatusValue } from "./submissions-panel";
 
 export default async function AssignmentDetailPage({ params }: PageProps<"/dashboard/assignments/[id]">) {
-  const ctx = await requireCapability("assignments", "view");
+  const ctx = await requirePageAccess("assignments", "view");
   const { id } = await params;
 
   const assignment = await ctx.db.assignment.findUnique({

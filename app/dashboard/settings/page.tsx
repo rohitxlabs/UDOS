@@ -1,8 +1,8 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
-  const ctx = await requireCapability("settings", "view");
+  const ctx = await requirePageAccess("settings", "view");
 
   const settings = await ctx.db.settings.findUnique({ where: { id: "settings" } });
 

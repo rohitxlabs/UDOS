@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 
 const PAGE_SIZE = 25;
 
 export default async function AuditLogsPage({ searchParams }: PageProps<"/dashboard/audit-logs">) {
-  const ctx = await requireCapability("auditLogs", "view");
+  const ctx = await requirePageAccess("auditLogs", "view");
   const params = await searchParams;
   const moduleFilter = typeof params.module === "string" ? params.module : "";
   const page = Math.max(1, Number(params.page) || 1);

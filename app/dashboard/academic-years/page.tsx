@@ -1,9 +1,9 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateAcademicYearButton } from "./academic-year-form";
 import { AcademicYearsTable } from "./academic-years-table";
 
 export default async function AcademicYearsPage() {
-  const ctx = await requireCapability("academicYears", "view");
+  const ctx = await requirePageAccess("academicYears", "view");
 
   const years = await ctx.db.academicYear.findMany({ orderBy: { startDate: "desc" } });
 

@@ -1,9 +1,9 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateDepartmentButton } from "./department-form";
 import { DepartmentsTable } from "./departments-table";
 
 export default async function DepartmentsPage() {
-  const ctx = await requireCapability("departments", "view");
+  const ctx = await requirePageAccess("departments", "view");
 
   const departments = await ctx.db.department.findMany({
     orderBy: { name: "asc" },

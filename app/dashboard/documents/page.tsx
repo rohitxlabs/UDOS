@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -7,7 +7,7 @@ import { AttachDocumentButton } from "./document-form";
 import { DocumentsTable, type DocumentRow } from "./documents-table";
 
 export default async function DocumentsPage({ searchParams }: PageProps<"/dashboard/documents">) {
-  const ctx = await requireCapability("documents", "view");
+  const ctx = await requirePageAccess("documents", "view");
   const params = await searchParams;
   const statusFilter = typeof params.status === "string" ? params.status : "";
   const studentFilter = typeof params.student === "string" ? params.student : "";

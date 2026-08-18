@@ -1,10 +1,10 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateUserForm } from "./create-user-form";
 import { UsersTable } from "./users-table";
 import { Search } from "lucide-react";
 
 export default async function UsersPage({ searchParams }: PageProps<"/dashboard/users">) {
-  const ctx = await requireCapability("users", "view");
+  const ctx = await requirePageAccess("users", "view");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
   const roleFilter = typeof params.role === "string" ? params.role : "";

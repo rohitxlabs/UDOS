@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { toDateInput } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/filter-bar";
@@ -8,7 +8,7 @@ import { CreateExamButton } from "./exam-form";
 import { ExamsTable, type ExamRow } from "./exams-table";
 
 export default async function ExamsPage({ searchParams }: PageProps<"/dashboard/exams">) {
-  const ctx = await requireCapability("exams", "view");
+  const ctx = await requirePageAccess("exams", "view");
   const params = await searchParams;
   const semesterFilter = typeof params.semester === "string" ? params.semester : "";
 

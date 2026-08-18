@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber } from "@/lib/format";
 import { PageHeader, EmptyState, Badge } from "@/components/dashboard/page-header";
@@ -58,7 +58,7 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: React.ReactNo
 }
 
 export default async function ReportsPage() {
-  const ctx = await requireCapability("reports", "view");
+  const ctx = await requirePageAccess("reports", "view");
 
   // Every section below is gated on the reporting user being able to see
   // the underlying module too: a report must never become a side door

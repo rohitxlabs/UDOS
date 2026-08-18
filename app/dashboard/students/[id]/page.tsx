@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { EditStudentForm } from "./edit-student-form";
 
 export default async function StudentDetailPage({ params }: PageProps<"/dashboard/students/[id]">) {
-  const ctx = await requireCapability("students", "view");
+  const ctx = await requirePageAccess("students", "view");
   const { id } = await params;
 
   const [student, courses] = await Promise.all([

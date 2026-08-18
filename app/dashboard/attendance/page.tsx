@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState } from "@/components/dashboard/page-header";
@@ -13,7 +13,7 @@ function todayISO() {
 }
 
 export default async function AttendancePage({ searchParams }: PageProps<"/dashboard/attendance">) {
-  const ctx = await requireCapability("attendance", "view");
+  const ctx = await requirePageAccess("attendance", "view");
   const params = await searchParams;
 
   const sectionId = typeof params.section === "string" ? params.section : "";

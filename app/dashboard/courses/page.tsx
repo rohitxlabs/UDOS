@@ -1,10 +1,10 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateCourseButton } from "./course-form";
 import { CoursesTable } from "./courses-table";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function CoursesPage() {
-  const ctx = await requireCapability("courses", "view");
+  const ctx = await requirePageAccess("courses", "view");
 
   const departments = await ctx.db.department.findMany({ orderBy: { name: "asc" } });
 

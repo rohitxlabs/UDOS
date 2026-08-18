@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FacultyTable } from "./faculty-table";
 
 export default async function FacultyPage({ searchParams }: PageProps<"/dashboard/faculty">) {
-  const ctx = await requireCapability("faculty", "view");
+  const ctx = await requirePageAccess("faculty", "view");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : "";
 

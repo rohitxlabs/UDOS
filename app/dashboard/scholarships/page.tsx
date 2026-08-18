@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/filter-bar";
@@ -8,7 +8,7 @@ import { CreateScholarshipButton } from "./scholarship-form";
 import { ScholarshipsTable, type ScholarshipRow } from "./scholarships-table";
 
 export default async function ScholarshipsPage({ searchParams }: PageProps<"/dashboard/scholarships">) {
-  const ctx = await requireCapability("scholarships", "view");
+  const ctx = await requirePageAccess("scholarships", "view");
   const params = await searchParams;
   const yearFilter = typeof params.year === "string" ? params.year : "";
   const statusFilter = typeof params.status === "string" ? params.status : "";

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Repeat } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CreateBookButton } from "./book-form";
 import { BooksTable, type BookRow } from "./books-table";
 
 export default async function LibraryPage({ searchParams }: PageProps<"/dashboard/library">) {
-  const ctx = await requireCapability("library", "view");
+  const ctx = await requirePageAccess("library", "view");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
 

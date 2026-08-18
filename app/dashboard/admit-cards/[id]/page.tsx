@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { PrintButton } from "@/components/dashboard/print-button";
 
 export default async function AdmitCardPage({ params }: PageProps<"/dashboard/admit-cards/[id]">) {
-  const ctx = await requireCapability("admitCards", "print");
+  const ctx = await requirePageAccess("admitCards", "print");
   const { id } = await params;
 
   const card = await ctx.db.admitCard.findUnique({

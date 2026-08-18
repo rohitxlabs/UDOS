@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/filter-bar";
@@ -8,7 +8,7 @@ import { RecordPaymentButton, type OutstandingFee } from "./record-payment";
 import { PaymentsTable, type PaymentRow, type PaymentStatusValue } from "./payments-table";
 
 export default async function PaymentsPage({ searchParams }: PageProps<"/dashboard/payments">) {
-  const ctx = await requireCapability("payments", "view");
+  const ctx = await requirePageAccess("payments", "view");
   const params = await searchParams;
   const methodFilter = typeof params.method === "string" ? params.method : "";
   const statusFilter = typeof params.status === "string" ? params.status : "";

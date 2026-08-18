@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CreateGradeButton } from "./grade-form";
 import { GradeTable } from "./grade-table";
 
 export default async function GradeScalePage() {
-  const ctx = await requireCapability("results", "view");
+  const ctx = await requirePageAccess("results", "view");
 
   const grades = await ctx.db.gradeScale.findMany({ orderBy: { minPercent: "desc" } });
 

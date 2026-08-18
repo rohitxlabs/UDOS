@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState } from "@/components/dashboard/page-header";
@@ -7,7 +7,7 @@ import { CreateSlotButton } from "./timetable-form";
 import { TimetableGrid, type SlotRow } from "./timetable-grid";
 
 export default async function TimetablePage({ searchParams }: PageProps<"/dashboard/timetable">) {
-  const ctx = await requireCapability("timetable", "view");
+  const ctx = await requirePageAccess("timetable", "view");
   const params = await searchParams;
   const sectionId = typeof params.section === "string" ? params.section : "";
 

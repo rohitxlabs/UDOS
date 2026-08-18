@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -8,7 +8,7 @@ import { AssignmentsTable, type AssignmentRow } from "./assignments-table";
 import { toDateTimeLocal } from "@/lib/format";
 
 export default async function AssignmentsPage({ searchParams }: PageProps<"/dashboard/assignments">) {
-  const ctx = await requireCapability("assignments", "view");
+  const ctx = await requirePageAccess("assignments", "view");
   const params = await searchParams;
   const sectionFilter = typeof params.section === "string" ? params.section : "";
   const subjectFilter = typeof params.subject === "string" ? params.subject : "";

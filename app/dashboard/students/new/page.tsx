@@ -1,9 +1,9 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateStudentForm } from "./create-student-form";
 import { SetupRequired } from "@/components/dashboard/setup-required";
 
 export default async function NewStudentPage() {
-  const ctx = await requireCapability("students", "create");
+  const ctx = await requirePageAccess("students", "create");
 
   const [courses, roles] = await Promise.all([
     ctx.db.course.findMany({

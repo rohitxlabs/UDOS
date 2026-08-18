@@ -21,13 +21,31 @@ export async function createLoginAccount(
     phone?: string | null;
     customUsername?: string | null;
     customPassword?: string | null;
-    createdById: string;
+    // The tenant User who is creating this account. Null for the bootstrap
+    // College Admin: that one is created by the platform owner during
+    // onboarding, and a platform identity is not a tenant identity (spec
+    // section 16) — storing its id here would point this column at a user
+    // that does not exist in this database.
+    createdById: string | null;
   }
 ): Promise<{ userId: string; username: string; password: string } | { error: string }> {
+  // A username has to be free in two places: the platform's login-routing
+  // directory (globally, so one username maps to exactly one tenant) and
+  // this tenant's own user table. They can disagree — a rolled-back
+  // onboarding cascade-deletes the directory entries but deliberately
+  // leaves the tenant database intact, so a name can be absent from the
+  // directory while still being taken inside the tenant.
+  const isTaken = async (candidate: string) => {
+    const [inDirectory, inTenant] = await Promise.all([
+      platformDb.tenantUserDirectory.findUnique({ where: { username: candidate } }),
+      db.user.findUnique({ where: { username: candidate } }),
+    ]);
+    return Boolean(inDirectory || inTenant);
+  };
+
   let username = params.customUsername?.trim();
   if (username) {
-    const existing = await platformDb.tenantUserDirectory.findUnique({ where: { username } });
-    if (existing) return { error: `Username "${username}" is already taken` };
+    if (await isTaken(username)) return { error: `Username "${username}" is already taken` };
   } else {
     const base = usernameBase(params.name);
     let candidate = "";
@@ -36,7 +54,8 @@ export async function createLoginAccount(
       const suffix = attempt === 0 ? String(Math.floor(100 + Math.random() * 900)) : String(Date.now()).slice(-6);
       candidate = `${base}.${suffix}`;
       attempt++;
-    } while ((await platformDb.tenantUserDirectory.findUnique({ where: { username: candidate } })) && attempt < 5);
+    } while ((await isTaken(candidate)) && attempt < 5);
+    if (await isTaken(candidate)) return { error: "Could not allocate a unique username — please try again" };
     username = candidate;
   }
 

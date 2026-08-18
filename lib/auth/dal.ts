@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { decrypt, getSessionCookie, type SessionPayload } from "@/lib/auth/session";
 import { prisma as platformDb } from "@/lib/prisma";
 import { getTenantClient } from "@/lib/tenant-db";
@@ -120,12 +120,31 @@ export async function requirePlatform(): Promise<PlatformAccessContext> {
   return ctx;
 }
 
-// The main guard used by tenant modules: module must be enabled for this
-// college AND the caller's role must be granted this action on it.
+// The guard for server actions: module must be enabled for this college AND
+// the caller's role must be granted this action on it. Throwing is right
+// here — a rejected mutation surfaces to the client as an action error the
+// caller already handles with a toast.
 export async function requireCapability(moduleName: Module, capability: Capability): Promise<TenantAccessContext> {
   const ctx = await requireTenant();
   if (!can(ctx, moduleName, capability)) {
     throw new Error(`Forbidden: role "${ctx.roleName ?? "none"}" lacks ${capability} on ${moduleName}`);
   }
+  return ctx;
+}
+
+// The same two-layer check, for pages. A page the caller may not open is a
+// 403, not a crash: throwing here would render the "server error" screen and
+// make a correctly-denied request look like a broken app. forbidden() renders
+// app/forbidden.tsx with a real 403 status instead.
+//
+// This is the backend check, not a cosmetic one — the sidebar already hides
+// links the caller cannot use, but typing the URL directly lands here
+// (spec section 9: frontend hiding alone is not sufficient).
+export async function requirePageAccess(
+  moduleName: Module,
+  capability: Capability = "view"
+): Promise<TenantAccessContext> {
+  const ctx = await requireTenant();
+  if (!can(ctx, moduleName, capability)) forbidden();
   return ctx;
 }

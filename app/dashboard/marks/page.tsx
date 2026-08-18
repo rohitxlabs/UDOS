@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState } from "@/components/dashboard/page-header";
@@ -6,7 +6,7 @@ import { SetupRequired } from "@/components/dashboard/setup-required";
 import { MarksSheet, type MarksRow, type MarksStatusValue } from "./marks-sheet";
 
 export default async function MarksPage({ searchParams }: PageProps<"/dashboard/marks">) {
-  const ctx = await requireCapability("marks", "view");
+  const ctx = await requirePageAccess("marks", "view");
   const params = await searchParams;
   const examId = typeof params.exam === "string" ? params.exam : "";
   const paperId = typeof params.paper === "string" ? params.paper : "";

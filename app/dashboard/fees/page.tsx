@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber } from "@/lib/format";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -7,7 +7,7 @@ import { CreateStructureButton } from "./fee-structure-form";
 import { StructuresTable, type StructureRow } from "./structures-table";
 
 export default async function FeesPage() {
-  const ctx = await requireCapability("fees", "view");
+  const ctx = await requirePageAccess("fees", "view");
 
   const [years, courses, semesters] = await Promise.all([
     ctx.db.academicYear.findMany({ orderBy: { startDate: "desc" } }),

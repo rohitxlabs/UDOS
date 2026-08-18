@@ -1,9 +1,9 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { CreateRoleButton } from "./create-role-form";
 import { RolesTable } from "./roles-table";
 
 export default async function RolesPage() {
-  const ctx = await requireCapability("roles", "view");
+  const ctx = await requirePageAccess("roles", "view");
 
   const roles = await ctx.db.role.findMany({
     orderBy: { name: "asc" },

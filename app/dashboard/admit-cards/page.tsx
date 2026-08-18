@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState } from "@/components/dashboard/page-header";
@@ -6,7 +6,7 @@ import { SetupRequired } from "@/components/dashboard/setup-required";
 import { AdmitCardsPanel, type AdmitCardRow } from "./admit-cards-panel";
 
 export default async function AdmitCardsPage({ searchParams }: PageProps<"/dashboard/admit-cards">) {
-  const ctx = await requireCapability("admitCards", "view");
+  const ctx = await requirePageAccess("admitCards", "view");
   const params = await searchParams;
   const examId = typeof params.exam === "string" ? params.exam : "";
 

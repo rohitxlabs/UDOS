@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { PageHeader, EmptyState } from "@/components/dashboard/page-header";
@@ -8,7 +8,7 @@ import { SetupRequired } from "@/components/dashboard/setup-required";
 import { ResultsPanel, type ResultRow, type ResultStatusValue } from "./results-panel";
 
 export default async function ResultsPage({ searchParams }: PageProps<"/dashboard/results">) {
-  const ctx = await requireCapability("results", "view");
+  const ctx = await requirePageAccess("results", "view");
   const params = await searchParams;
   const examId = typeof params.exam === "string" ? params.exam : "";
 

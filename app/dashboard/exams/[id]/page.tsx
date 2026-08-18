@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { toDateInput } from "@/lib/format";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -9,7 +9,7 @@ import { SchedulePanel, type ScheduleRow, type SubjectOption } from "./schedule-
 import { EligibilityPanel, type EligibilityRow, type EligibilityStatusValue } from "./eligibility-panel";
 
 export default async function ExamDetailPage({ params }: PageProps<"/dashboard/exams/[id]">) {
-  const ctx = await requireCapability("exams", "view");
+  const ctx = await requirePageAccess("exams", "view");
   const { id } = await params;
 
   const exam = await ctx.db.examination.findUnique({

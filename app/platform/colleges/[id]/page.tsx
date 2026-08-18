@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma as platformDb } from "@/lib/prisma";
 import { requirePlatform } from "@/lib/auth/dal";
 import { ModuleToggles } from "./module-toggles";
+import { AdminAccess } from "./admin-access";
 
 export default async function CollegeDetailPage({ params }: PageProps<"/platform/colleges/[id]">) {
   await requirePlatform();
@@ -19,9 +20,12 @@ export default async function CollegeDetailPage({ params }: PageProps<"/platform
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">{college.name}</h1>
-        <p className="mt-1 text-sm text-slate-500">/{college.slug} — {college.isActive ? "Active" : "Suspended"}</p>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">{college.name}</h1>
+          <p className="mt-1 text-sm text-slate-500">/{college.slug} — {college.isActive ? "Active" : "Suspended"}</p>
+        </div>
+        <AdminAccess collegeId={college.id} collegeName={college.name} />
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

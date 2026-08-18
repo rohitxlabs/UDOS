@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { MODULE_LABELS, type Module } from "@/lib/permissions";
 import { PermissionGrid } from "./permission-grid";
 
 const CORE_MODULES: Module[] = ["users", "roles", "settings", "auditLogs"];
 
 export default async function RoleDetailPage({ params }: PageProps<"/dashboard/roles/[id]">) {
-  const ctx = await requireCapability("roles", "view");
+  const ctx = await requirePageAccess("roles", "view");
   const { id } = await params;
 
   const role = await ctx.db.role.findUnique({ where: { id }, include: { permissions: true } });

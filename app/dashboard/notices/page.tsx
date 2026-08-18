@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { toDateInput } from "@/lib/format";
 import { FilterBar } from "@/components/dashboard/filter-bar";
@@ -7,7 +7,7 @@ import { CreateNoticeButton, AUDIENCE_LABELS, type AudienceValue, type Targets }
 import { NoticesList, type NoticeRow } from "./notices-list";
 
 export default async function NoticesPage({ searchParams }: PageProps<"/dashboard/notices">) {
-  const ctx = await requireCapability("notices", "view");
+  const ctx = await requirePageAccess("notices", "view");
   const params = await searchParams;
   const audienceFilter = typeof params.audience === "string" ? params.audience : "";
   const stateFilter = typeof params.state === "string" ? params.state : "";

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireCapability } from "@/lib/auth/dal";
+import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber, toDateInput } from "@/lib/format";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { BillingPanel, type StudentFeeRow } from "./billing-panel";
 
 export default async function FeeStructureDetailPage({ params }: PageProps<"/dashboard/fees/[id]">) {
-  const ctx = await requireCapability("fees", "view");
+  const ctx = await requirePageAccess("fees", "view");
   const { id } = await params;
 
   const structure = await ctx.db.feeStructure.findUnique({

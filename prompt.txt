@@ -1,0 +1,2274 @@
+database 
+# Database-per-College Architecture
+
+## Critical Architecture Requirement
+
+The ERP must use a **database-per-college / database-per-tenant architecture**.
+
+Each college must have its own completely separate operational database.
+
+The platform must NOT store all colleges' student, academic, financial and operational data in one shared tenant database.
+
+---
+
+# 1. Platform Database
+
+Maintain one central Platform Database controlled by the ERP provider.
+
+The Platform Database stores only platform-level information.
+
+Examples:
+
+* Colleges
+* College IDs
+* College names
+* College status
+* Subscription plans
+* Subscription status
+* Enabled modules
+* Platform users
+* College onboarding information
+* Tenant database identifier
+* Database provisioning status
+* Platform-level configuration
+* Platform audit logs
+
+Do NOT store the complete student/academic/financial records of every college in this database.
+
+---
+
+# 2. College Database
+
+Every college receives a separate database.
+
+Example:
+
+```text
+College A → Database A
+College B → Database B
+College C → Database C
+College D → Database D
+```
+
+Each college database contains that college's operational ERP data.
+
+For example:
+
+```text
+students
+faculty
+departments
+courses
+subjects
+sections
+attendance
+assignments
+assignment_submissions
+examinations
+exam_schedules
+marks
+results
+admit_cards
+fee_structures
+student_fees
+payments
+receipts
+library_books
+library_transactions
+timetables
+notices
+notifications
+documents
+certificates
+users
+roles
+permissions
+audit_logs
+```
+
+The exact tables should depend on the enabled modules.
+
+---
+
+# 3. College Database Isolation
+
+College databases must be physically/logically separate database instances/projects.
+
+College A must never query College B's database.
+
+College B must never query College A's database.
+
+There should be no possibility for a normal college user to select another college's database.
+
+The tenant/database mapping must be determined by the authenticated ERP session.
+
+Never accept a database identifier directly from the frontend.
+
+---
+
+# 4. Example Using Neon/PostgreSQL
+
+The platform may use a PostgreSQL provider such as Neon.
+
+When a new college is onboarded:
+
+```text
+New College
+     ↓
+Create tenant record in Platform DB
+     ↓
+Provision separate PostgreSQL database/project
+     ↓
+Run ERP database migrations
+     ↓
+Create initial college administrator
+     ↓
+Register database internally against tenant
+     ↓
+Activate selected modules
+     ↓
+College becomes active
+```
+
+Example:
+
+```text
+Platform DB
+
+College A
+database_id = tenant_db_001
+
+College B
+database_id = tenant_db_002
+
+College C
+database_id = tenant_db_003
+```
+
+These database identifiers are internal platform information.
+
+The college does not need to know which database provider is being used.
+
+---
+
+# 5. Do Not Expose Database Information
+
+College users must NEVER see:
+
+* Database hostname
+* Database name
+* Database username
+* Database password
+* Connection string
+* Database provider
+* Neon project ID
+* PostgreSQL credentials
+* Internal infrastructure information
+
+The college interacts only with the ERP application.
+
+---
+
+# 6. Secure Database Credential Management
+
+Do NOT store plaintext database passwords or complete connection strings in ordinary application tables.
+
+Use a secure secrets-management mechanism.
+
+The Platform Database may store a non-sensitive:
+
+```text
+tenant_database_id
+```
+
+The actual database credentials should be stored securely using encrypted secrets / environment configuration / a dedicated secrets manager.
+
+Conceptually:
+
+```text
+Authenticated College User
+          ↓
+ERP Backend
+          ↓
+Identify Tenant
+          ↓
+Retrieve Tenant Database Configuration
+          ↓
+Securely Retrieve Credentials
+          ↓
+Connect to Tenant Database
+          ↓
+Execute Authorized Operation
+```
+
+---
+
+# 7. Tenant Resolution
+
+The backend must determine which college/tenant the user belongs to.
+
+For example:
+
+```text
+User logs in
+      ↓
+Authentication
+      ↓
+User belongs to College A
+      ↓
+Tenant = College A
+      ↓
+Tenant Database = Database A
+      ↓
+All queries execute against Database A
+```
+
+The frontend must NOT send:
+
+```text
+database_id=college_b
+```
+
+and expect the backend to trust it.
+
+The backend must determine the tenant from authenticated identity/session information.
+
+---
+
+# 8. Database Connection Architecture
+
+Do not create a completely new database connection manually for every request.
+
+Create a tenant-aware database connection layer.
+
+Conceptually:
+
+```text
+Request
+   ↓
+Authentication Middleware
+   ↓
+Tenant Resolution
+   ↓
+Tenant Database Resolver
+   ↓
+Connection Manager
+   ↓
+Tenant Database
+   ↓
+Application Service
+```
+
+The connection manager should reuse connections/pools where appropriate.
+
+Because the platform may eventually support hundreds or thousands of colleges, the architecture must avoid creating unlimited permanent connection pools.
+
+---
+
+# 9. Connection Pooling
+
+Design the system for many tenant databases.
+
+Do not assume:
+
+```text
+1000 colleges
+=
+1000 permanently open connection pools
+```
+
+This may create unnecessary infrastructure pressure.
+
+Use an appropriate strategy such as:
+
+* Lazy connection creation
+* Connection pooling
+* Pool eviction
+* Idle connection cleanup
+* Maximum active tenant connections
+* Connection reuse
+* Provider-supported pooling
+
+The implementation should be designed according to the database provider's connection limits.
+
+---
+
+# 10. Database Provisioning Service
+
+Create a dedicated internal service for provisioning college databases.
+
+Example:
+
+```text
+Tenant Provisioning Service
+```
+
+Responsibilities:
+
+* Create database/project
+* Generate database credentials
+* Store credentials securely
+* Run migrations
+* Create required initial records
+* Create College Admin
+* Enable modules
+* Verify database health
+* Mark tenant as active
+
+Provisioning should be idempotent.
+
+If provisioning fails halfway, the system should be able to safely retry.
+
+---
+
+# 11. Tenant Lifecycle
+
+Support the following lifecycle:
+
+```text
+Created
+   ↓
+Provisioning
+   ↓
+Provisioned
+   ↓
+Active
+   ↓
+Suspended
+   ↓
+Reactivated
+   ↓
+Deactivated
+   ↓
+Archived
+```
+
+Do not delete a college database simply because the subscription is suspended.
+
+---
+
+# 12. College Onboarding
+
+Super Admin should have an onboarding screen.
+
+Example:
+
+```text
+Create College
+
+College Name:
+ABC College
+
+College Code:
+ABC001
+
+Admin Name:
+John Doe
+
+Admin Email:
+admin@abccollege.edu
+
+Subscription:
+Professional
+
+Modules:
+[x] Student Management
+[x] Faculty Management
+[x] Attendance
+[x] Assignments
+[x] Examination
+[x] Results
+[x] Fees
+[x] Accounts
+[ ] Hostel
+[ ] Transport
+[x] Library
+```
+
+When the Super Admin clicks:
+
+**Create College**
+
+the platform should:
+
+1. Create tenant
+2. Provision database
+3. Run migrations
+4. Configure modules
+5. Create College Admin
+6. Send/enable login access
+7. Mark tenant as active
+
+---
+
+# 13. Module Availability
+
+Module availability remains controlled by the Platform Super Admin.
+
+Example:
+
+```text
+College A
+
+Student Management = ON
+Attendance = ON
+Accounts = ON
+Library = OFF
+Hostel = OFF
+```
+
+The college cannot activate Library or Hostel if the Platform Super Admin has not enabled them.
+
+---
+
+# 14. College Internal Permissions
+
+Once a module is enabled, the College Admin controls its internal permissions.
+
+For example:
+
+Platform enables:
+
+```text
+Accounts
+```
+
+for College A.
+
+College A can then decide:
+
+```text
+Accountant
+    ↓
+Fees → Full
+Payments → Full
+Receipts → Full
+Reports → View
+
+Professor
+    ↓
+Accounts → No Access
+
+Student
+    ↓
+Fees → View Own
+Payments → View Own
+```
+
+The Platform Super Admin does not need to configure these permissions.
+
+---
+
+# 15. College Database Users
+
+The College Database should contain the college's internal ERP users.
+
+For example:
+
+```text
+users
+roles
+permissions
+user_roles
+role_permissions
+```
+
+These users belong exclusively to that college.
+
+Do not place all college users into one shared tenant-user database unless required for a specific platform function.
+
+---
+
+# 16. Platform User vs College User
+
+Maintain a strict distinction.
+
+### Platform User
+
+Exists in the Platform Database.
+
+Examples:
+
+* Platform Super Admin
+* Platform Support Admin
+* Platform Billing Admin
+
+### College User
+
+Exists in the College Database.
+
+Examples:
+
+* College Admin
+* Principal
+* Professor
+* Accountant
+* Librarian
+* Student
+* Examination Officer
+
+Do not mix platform identities and college identities unnecessarily.
+
+---
+
+# 17. College Database Schema
+
+Every newly provisioned college database should start from the same ERP schema/migrations.
+
+For example:
+
+```text
+ERP Schema Version 1
+ERP Schema Version 2
+ERP Schema Version 3
+...
+```
+
+When the ERP is updated:
+
+```text
+New ERP Version
+       ↓
+Migration
+       ↓
+College A DB
+College B DB
+College C DB
+...
+```
+
+All tenant databases must be kept compatible with the application version.
+
+---
+
+# 18. Database Migration Management
+
+Because there are multiple databases, migrations become a major part of the architecture.
+
+Create a central migration manager.
+
+It should know:
+
+```text
+College A → Schema version 14
+College B → Schema version 14
+College C → Schema version 13
+```
+
+The platform should be able to identify outdated tenant databases.
+
+Before applying a migration:
+
+* Validate database
+* Run migration
+* Verify success
+* Record migration version
+* Record timestamp
+* Log errors
+
+Never assume every tenant database is automatically updated.
+
+---
+
+# 19. Backups
+
+Each college database should have its own backup strategy.
+
+The platform should internally track:
+
+* Last backup
+* Backup status
+* Backup failure
+* Backup retention
+* Database health
+
+The college does not need direct database access.
+
+The platform provider manages backups.
+
+---
+
+# 20. College Data Export
+
+Consider providing an authorized data-export system.
+
+College Admin may eventually be able to request:
+
+* Student data
+* Academic data
+* Fee data
+* Library data
+* Documents
+* Reports
+
+Export should be controlled and audited.
+
+Large exports should be processed asynchronously.
+
+---
+
+# 21. College Data Deletion
+
+Do not permanently delete a college database through a normal UI button.
+
+If a college leaves the platform:
+
+```text
+Active
+ ↓
+Suspended
+ ↓
+Archived
+```
+
+Then follow a defined retention policy.
+
+Permanent deletion should require:
+
+* Explicit platform-level authorization
+* Confirmation
+* Audit log
+* Backup/retention checks
+
+---
+
+# 22. Disaster Recovery
+
+Because each college has its own database, disaster recovery must consider each tenant separately.
+
+If:
+
+```text
+College A database fails
+```
+
+College B and College C should continue operating.
+
+The platform should be able to restore College A without affecting College B or C.
+
+This is one of the major advantages of database-per-tenant architecture.
+
+---
+
+# 23. Database Health Monitoring
+
+Super Admin should have an internal database health dashboard.
+
+Example:
+
+```text
+College        Database       Status       Schema
+----------------------------------------------------
+ABC College    DB-001         Healthy      v14
+XYZ College    DB-002         Healthy      v14
+DEF College    DB-003         Warning      v13
+GHI College    DB-004         Offline      v14
+```
+
+This information is for platform management only.
+
+College users should not see internal infrastructure details.
+
+---
+
+# 24. Tenant Database Routing
+
+Every request should follow:
+
+```text
+Request
+   ↓
+Authenticate
+   ↓
+Identify College
+   ↓
+Load College Database Mapping
+   ↓
+Get Secure Database Credentials
+   ↓
+Connect to College Database
+   ↓
+Check Module
+   ↓
+Check Permission
+   ↓
+Execute Query
+```
+
+This should be implemented centrally rather than repeated manually in every feature.
+
+---
+
+# 25. Important Security Rule
+
+Never do:
+
+```text
+const database = request.body.database;
+```
+
+and connect to that database.
+
+The user must never be able to choose the target database.
+
+Instead:
+
+```text
+authenticatedUser
+       ↓
+tenantId
+       ↓
+trusted platform mapping
+       ↓
+database configuration
+```
+
+The tenant database is selected entirely by the backend.
+
+---
+
+# 26. Platform Database Should Remain Small
+
+The Platform Database should contain metadata rather than operational college data.
+
+Think of it as:
+
+**Control Plane**
+
+while the college databases are:
+
+**Data Plane**
+
+Architecture:
+
+```text
+                 CONTROL PLANE
+              ┌─────────────────┐
+              │   Platform DB   │
+              │                 │
+              │ Colleges        │
+              │ Plans           │
+              │ Modules         │
+              │ Subscriptions   │
+              │ DB Mapping      │
+              │ Platform Users  │
+              └────────┬────────┘
+                       │
+                Tenant Resolver
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+
+      DATA PLANE    DATA PLANE     DATA PLANE
+      College A     College B      College C
+
+      Database A    Database B     Database C
+```
+
+This is the recommended mental model for the system.
+
+---
+
+# 27. Important Product Principle
+
+The college should experience the ERP as one application.
+
+They should NOT need to know:
+
+* Which database they use
+* Where it is hosted
+* Which project contains it
+* Which PostgreSQL provider is used
+* How backups work
+* How connections work
+* How tenant routing works
+
+All of that is infrastructure controlled by the ERP platform.
+
+The college simply sees:
+
+```text
+Login
+ ↓
+College ERP
+ ↓
+Their data
+```
+
+---
+
+# 28. Final Architecture
+
+The final ERP architecture should therefore be:
+
+```text
+                         ERP PLATFORM
+                              │
+                     ┌────────▼────────┐
+                     │  PLATFORM DB    │
+                     │                 │
+                     │ Colleges        │
+                     │ Plans           │
+                     │ Modules         │
+                     │ Subscriptions   │
+                     │ DB Registry     │
+                     └────────┬────────┘
+                              │
+                       Tenant Resolver
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+      COLLEGE A            COLLEGE B            COLLEGE C
+          │                   │                   │
+      DB-A                  DB-B                DB-C
+          │                   │                   │
+    ┌─────┴─────┐       ┌─────┴─────┐       ┌─────┴─────┐
+    │ Students  │       │ Students  │       │ Students  │
+    │ Faculty   │       │ Faculty   │       │ Faculty   │
+    │ Accounts  │       │ Accounts  │       │ Accounts  │
+    │ Fees      │       │ Fees      │       │ Fees      │
+    │ Library   │       │ Library   │       │ Library   │
+    │ Exams     │       │ Exams     │       │ Exams     │
+    │ Results   │       │ Results   │       │ Results   │
+    │ Users     │       │ Users     │       │ Users     │
+    └───────────┘       └───────────┘       └───────────┘
+```
+
+## Core rule
+
+**One ERP application + one platform/control database + one dedicated operational database per college.**
+
+The Platform Super Admin controls **which modules each college gets**.
+
+The College Admin controls **what their own users can do inside those modules**.
+
+The college never directly manages or even needs to know about its underlying database infrastructure.
+
+This is the architecture I would use as the foundation before building the actual modules. It also gives you a clean path to eventually support **hundreds or thousands of colleges**, provided the database provisioning, connection pooling, migrations, backups, and monitoring are designed properly from the beginning.
+
+
+Main prompt 
+# Multi-Tenant Modular College ERP Platform
+
+Build a **multi-tenant, modular ERP platform** that can be provided to multiple colleges/institutions.
+
+This is NOT a single-college ERP.
+
+The platform owner provides a general ERP containing many modules such as:
+
+* Student Management
+* Faculty/Professor Management
+* Accounts
+* Fees
+* Library
+* Attendance
+* Assignments
+* Examination
+* Results
+* Admit Cards
+* Timetable
+* HR
+* Payroll
+* Hostel
+* Transport
+* Inventory
+* Notifications
+* Reports
+* Documents
+* Admissions
+* and other future modules
+
+The platform must allow the platform owner to decide which modules/features are available to each college.
+
+After a module is enabled for a college, the **college itself controls its internal users, roles and permissions**.
+
+---
+
+# 1. Core Architecture
+
+The system must be designed as a **multi-tenant SaaS ERP**.
+
+There are three major levels:
+
+## Level 1 — Platform
+
+The platform is owned and operated by the ERP provider.
+
+The platform owner is the:
+
+**Platform Super Admin**
+
+The Platform Super Admin manages:
+
+* Colleges/tenants
+* Subscriptions
+* Modules
+* Features
+* Plans
+* Platform configuration
+* Platform-level monitoring
+* Tenant activation/deactivation
+* Tenant onboarding
+
+The Platform Super Admin does NOT manage the internal permissions of a college after onboarding.
+
+---
+
+# 2. Platform Super Admin
+
+The Platform Super Admin is the owner of the ERP platform.
+
+The Super Admin can:
+
+* Create colleges
+* Edit colleges
+* Activate/deactivate colleges
+* Assign modules to colleges
+* Remove modules from colleges
+* Configure subscription plans
+* View subscription status
+* View enabled modules
+* View module usage statistics
+* Configure available ERP modules
+* Create new modules/features
+* View platform-level reports
+* Manage platform settings
+* Manage billing/subscription plans
+* Manage tenant lifecycle
+
+## Critical Permission Rule
+
+The Super Admin can control:
+
+**"Does this college have access to this module?"**
+
+The Super Admin cannot control:
+
+**"Which employee/student/teacher inside the college has access to this module?"**
+
+That responsibility belongs to the college.
+
+---
+
+# 3. College/Tenant
+
+Every college is a separate tenant.
+
+Example:
+
+Tenant 1:
+ABC College
+
+Tenant 2:
+XYZ University
+
+Tenant 3:
+DEF Institute
+
+Each tenant must have isolated:
+
+* Students
+* Teachers
+* Employees
+* Departments
+* Accounts
+* Fees
+* Library
+* Exams
+* Results
+* Documents
+* Notifications
+* Settings
+* Roles
+* Permissions
+
+One college must NEVER be able to access another college's data.
+
+Tenant isolation must be enforced at the backend/database/API level.
+
+Do not rely only on frontend filtering.
+
+---
+
+# 4. College Admin
+
+Each college receives a primary:
+
+**College Administrator**
+
+When the Super Admin enables modules for the college, the College Admin takes control of those modules.
+
+The College Admin can:
+
+* Create college users
+* Create roles
+* Assign permissions
+* Create departments
+* Create courses
+* Create subjects
+* Manage students
+* Manage faculty
+* Configure module settings
+* Configure workflows
+* Configure academic structure
+* Decide which internal users can access enabled modules
+
+The College Admin must only see modules that have been enabled for that college.
+
+---
+
+# 5. Permission Hierarchy
+
+The permission model must work like this:
+
+Platform Super Admin
+↓
+Controls tenant/module availability
+↓
+College Admin
+↓
+Controls internal roles and permissions
+↓
+College Users
+↓
+Use assigned functionality
+
+Example:
+
+Super Admin enables:
+
+* Student Management
+* Attendance
+* Accounts
+* Fees
+* Library
+* Examination
+
+for ABC College.
+
+ABC College Admin can then create:
+
+### Accountant
+
+* Accounts: Full
+* Fees: Full
+* Students: View
+* Library: None
+* Examination: None
+
+### Professor
+
+* Students: View
+* Attendance: Full
+* Assignments: Full
+* Marks: Full
+* Accounts: None
+* Fees: None
+
+### Librarian
+
+* Library: Full
+* Students: View
+* Accounts: None
+* Examination: None
+
+### Student
+
+* Attendance: View Own
+* Assignments: Submit/View
+* Fees: View Own
+* Library: View Own
+* Results: View Own
+
+The Platform Super Admin does not configure these individual permissions.
+
+---
+
+# 6. Two-Level Access Control
+
+Implement two separate permission layers.
+
+## Layer 1 — Tenant Module Access
+
+Controlled by Platform Super Admin.
+
+Example:
+
+College ABC:
+
+Student Management = Enabled
+Attendance = Enabled
+Accounts = Enabled
+Library = Disabled
+Hostel = Disabled
+Transport = Enabled
+
+If Library is disabled:
+
+Nobody in ABC College can access Library.
+
+Even if the College Admin creates a role called "Librarian", the Library module must remain inaccessible.
+
+---
+
+## Layer 2 — Tenant Internal Permissions
+
+Controlled by College Admin.
+
+If Accounts is enabled:
+
+College Admin decides:
+
+* Who can view accounts
+* Who can edit fees
+* Who can record payments
+* Who can generate receipts
+* Who can view reports
+* Who can approve transactions
+
+This is completely controlled by the college.
+
+---
+
+# 7. Feature-Level Permissions
+
+Do not make permissions only at module level.
+
+Support:
+
+Module
+→ Feature
+→ Action
+
+Example:
+
+Accounts
+
+Features:
+
+* Fee Structure
+* Student Fees
+* Payments
+* Receipts
+* Discounts
+* Scholarships
+* Financial Reports
+
+Actions:
+
+* View
+* Create
+* Edit
+* Delete
+* Approve
+* Export
+* Print
+
+A college can create a role with:
+
+Accounts:
+View + Create + Edit
+
+But:
+
+Financial Reports:
+View only
+
+Payments:
+Create + View
+
+Scholarships:
+No access
+
+---
+
+# 8. Permission Resolution
+
+Every request must pass through permission resolution.
+
+Conceptually:
+
+```text
+User
+ ↓
+College/Tenant
+ ↓
+Is module enabled for this college?
+ ↓
+YES
+ ↓
+Does user's role have permission?
+ ↓
+YES
+ ↓
+Does user have access to this specific resource?
+ ↓
+YES
+ ↓
+Allow request
+```
+
+If any required permission fails:
+
+```text
+403 Forbidden
+```
+
+Do not expose unauthorized data.
+
+---
+
+# 9. Important Rule About Disabled Modules
+
+If a module is disabled for a college:
+
+* Hide it from navigation
+* Hide it from dashboards
+* Block its APIs
+* Block its routes
+* Block direct URL access
+* Block database operations through application services
+* Do not send its data to frontend
+* Do not allow reports related to that module
+
+Frontend hiding alone is NOT sufficient.
+
+---
+
+# 10. Module Marketplace / Module Management
+
+The Platform Super Admin should have a central module management system.
+
+Example:
+
+## Available Modules
+
+* Student Management
+* Faculty Management
+* Attendance
+* Assignments
+* Examination
+* Results
+* Admit Cards
+* Accounts
+* Fees
+* Library
+* Timetable
+* Admissions
+* HR
+* Payroll
+* Hostel
+* Transport
+* Inventory
+* Certificates
+* Documents
+* Notifications
+* Reports
+* Parent Portal
+* Alumni
+* Placement
+
+Each module should have:
+
+* Module ID
+* Module name
+* Description
+* Icon
+* Version
+* Status
+* Features
+* Dependencies
+* Subscription requirements
+
+---
+
+# 11. Module Dependencies
+
+Support dependencies between modules.
+
+Example:
+
+Results may depend on:
+
+* Students
+* Courses
+* Subjects
+* Examination
+
+Fees may depend on:
+
+* Students
+
+Attendance may depend on:
+
+* Students
+* Faculty
+* Subjects
+* Timetable
+
+If a Super Admin tries to disable a required dependency, show a warning.
+
+Example:
+
+"Results depends on Examination and Student Management. Disabling Student Management may disable Results."
+
+Do not silently break modules.
+
+---
+
+# 12. College Module Configuration
+
+After the Super Admin enables a module, the College Admin should be able to configure it.
+
+For example:
+
+Attendance:
+
+* Minimum attendance percentage
+* Attendance types
+* Late rules
+* Leave rules
+* Attendance calculation
+* Warning thresholds
+
+Fees:
+
+* Fee categories
+* Payment schedules
+* Late fees
+* Discounts
+* Scholarships
+* Payment methods
+
+Examination:
+
+* Grading system
+* Passing marks
+* Exam types
+* Result calculation
+* Admit card rules
+
+The Super Admin should NOT configure these college-specific academic/business rules unless explicitly designed as a platform-level setting.
+
+---
+
+# 13. College-Specific Roles
+
+College Admin should be able to create custom roles.
+
+Examples:
+
+* Principal
+* Vice Principal
+* HOD
+* Professor
+* Assistant Professor
+* Accountant
+* Librarian
+* Examination Officer
+* Admission Officer
+* HR Manager
+* Student
+* Parent
+* Receptionist
+* Finance Manager
+* Hostel Warden
+
+Do not hard-code all roles.
+
+Allow colleges to create custom roles.
+
+---
+
+# 14. Custom Permission Builder
+
+Create a visual permission management interface.
+
+Example:
+
+```text
+Role: Accountant
+
+Accounts
+[x] View
+[x] Create
+[x] Edit
+[ ] Delete
+[x] Approve
+[x] Export
+
+Fees
+[x] View
+[x] Create
+[x] Edit
+[ ] Delete
+[x] Approve
+
+Students
+[x] View
+[ ] Create
+[ ] Edit
+[ ] Delete
+
+Attendance
+[ ] View
+[ ] Create
+[ ] Edit
+[ ] Delete
+```
+
+College Admin can save this role.
+
+---
+
+# 15. Scope-Based Permissions
+
+Support permissions at different scopes.
+
+Examples:
+
+### Own Data
+
+Student can view:
+
+* Own attendance
+* Own fees
+* Own assignments
+* Own results
+
+### Department
+
+HOD can access:
+
+* Students in their department
+* Faculty in their department
+* Attendance for their department
+* Results for their department
+
+### Course
+
+Course coordinator can access:
+
+* Students in assigned course
+* Subjects in assigned course
+* Academic records
+
+### Section
+
+Professor can access:
+
+* Students in assigned section
+
+### College
+
+Principal can access:
+
+* All college data
+
+Implement resource-level authorization where necessary.
+
+---
+
+# 16. College Data Isolation
+
+Every tenant-owned record must be associated with a tenant/college ID.
+
+Example:
+
+```text
+students
+---------
+id
+tenant_id
+name
+course_id
+...
+```
+
+```text
+fees
+---------
+id
+tenant_id
+student_id
+amount
+...
+```
+
+```text
+attendance
+---------
+id
+tenant_id
+student_id
+subject_id
+...
+```
+
+The backend must automatically enforce tenant isolation.
+
+Never trust a `tenant_id` supplied directly by the frontend.
+
+Determine the tenant from the authenticated session/token/context.
+
+---
+
+# 17. Platform vs Tenant Database Strategy
+
+Choose a scalable multi-tenant architecture.
+
+At minimum, separate:
+
+## Platform Data
+
+* tenants
+* subscriptions
+* plans
+* modules
+* module_features
+* tenant_modules
+* platform_users
+* platform_settings
+
+## Tenant Data
+
+* students
+* faculty
+* departments
+* courses
+* attendance
+* assignments
+* fees
+* payments
+* exams
+* results
+* library
+* roles
+* permissions
+* notifications
+
+Choose the appropriate multi-tenancy strategy based on expected scale.
+
+The architecture should make it possible to move to stronger tenant isolation later if required.
+
+---
+
+# 18. Subscription Management
+
+Design the system so modules can be linked to subscription plans.
+
+Example:
+
+### Basic Plan
+
+* Student Management
+* Faculty Management
+* Attendance
+
+### Standard Plan
+
+* Student Management
+* Faculty
+* Attendance
+* Assignments
+* Examination
+* Results
+* Fees
+
+### Enterprise Plan
+
+* All modules
+* Advanced Reports
+* HR
+* Payroll
+* Hostel
+* Transport
+* Library
+* Custom integrations
+
+The platform owner can assign a plan to a college.
+
+Also support custom module assignment for individual colleges.
+
+---
+
+# 19. Module Activation Workflow
+
+The workflow should be:
+
+```text
+Super Admin creates College
+        ↓
+College subscription/plan selected
+        ↓
+Modules become available
+        ↓
+Super Admin activates required modules
+        ↓
+College Admin logs in
+        ↓
+College Admin sees enabled modules
+        ↓
+College Admin configures modules
+        ↓
+College Admin creates roles/users
+        ↓
+College users use assigned modules
+```
+
+---
+
+# 20. Module Deactivation
+
+When Super Admin disables a module:
+
+Do NOT immediately delete its data.
+
+Instead:
+
+```text
+Module Status = Disabled
+```
+
+Existing data should remain safely stored.
+
+If the module is re-enabled later:
+
+The college's existing data should become available again.
+
+Show a clear warning before disabling:
+
+"This will prevent all users of this college from accessing this module. Existing data will not be deleted."
+
+---
+
+# 21. Platform Dashboard
+
+Super Admin dashboard should show:
+
+* Total colleges
+* Active colleges
+* Inactive colleges
+* Total users
+* Active subscriptions
+* Expiring subscriptions
+* Enabled modules
+* Most-used modules
+* Module adoption
+* Platform usage
+* System health
+
+The Super Admin should NOT see unnecessary individual student/teacher academic information by default.
+
+The platform is primarily responsible for **tenant/platform management**, not day-to-day college administration.
+
+---
+
+# 22. College Dashboard
+
+Each college gets its own dashboard based on enabled modules.
+
+If Attendance is enabled:
+
+Show attendance information.
+
+If Accounts is enabled:
+
+Show fee/account information.
+
+If Library is disabled:
+
+Do not show Library widgets.
+
+The dashboard must dynamically adapt to the enabled modules.
+
+---
+
+# 23. Dynamic Navigation
+
+The sidebar must be generated based on:
+
+```text
+Available Modules
++
+User Permissions
+```
+
+Example:
+
+If college has:
+
+* Student Management
+* Accounts
+* Attendance
+
+and the current user has only:
+
+* Student View
+* Attendance View
+
+then sidebar should show:
+
+```text
+Dashboard
+Students
+Attendance
+```
+
+Accounts should not appear.
+
+---
+
+# 24. Super Admin UI
+
+Super Admin sidebar:
+
+Dashboard
+
+Tenants / Colleges
+
+* All Colleges
+* Add College
+* Active Colleges
+* Inactive Colleges
+
+Modules
+
+* All Modules
+* Module Features
+* Module Dependencies
+
+Subscriptions
+
+* Plans
+* Subscriptions
+* Renewals
+
+Platform
+
+* Users
+* Settings
+* Audit Logs
+* System Monitoring
+
+Reports
+
+* Tenant Reports
+* Module Usage
+* Subscription Reports
+
+---
+
+# 25. College Admin UI
+
+College Admin sidebar should be dynamic.
+
+Possible sections:
+
+Dashboard
+
+Academic
+
+* Students
+* Faculty
+* Departments
+* Courses
+* Subjects
+* Sections
+
+Attendance
+
+Assignments
+
+Examination
+
+Results
+
+Accounts
+
+Fees
+
+Library
+
+Timetable
+
+HR
+
+Reports
+
+Notifications
+
+Settings
+
+Only display modules enabled by the Platform Super Admin.
+
+---
+
+# 26. Audit Logs
+
+Create separate audit systems.
+
+## Platform Audit Logs
+
+Track:
+
+* Super Admin created college
+* Module enabled
+* Module disabled
+* Subscription changed
+* Plan changed
+* Tenant activated/deactivated
+
+## College Audit Logs
+
+Track:
+
+* College Admin created user
+* Role created
+* Permission changed
+* Fee modified
+* Attendance modified
+* Marks modified
+* Result published
+* Admit card released
+
+The Super Admin should be able to see platform-level audit activity.
+
+College Admin should see their own tenant's audit activity.
+
+---
+
+# 27. Super Admin Access Boundary
+
+This is extremely important.
+
+The Super Admin should NOT automatically inherit all tenant permissions.
+
+Being the Platform Super Admin does NOT mean:
+
+"Super Admin can edit every student's marks."
+
+Instead:
+
+Platform Super Admin has platform-management authority.
+
+College users have college-management authority.
+
+If a support/debugging feature is required later, create a separate controlled mechanism such as:
+
+**Support Access / Tenant Impersonation**
+
+with:
+
+* Explicit activation
+* Reason required
+* Time limit
+* Full audit log
+* Read-only by default
+* Optional approval
+
+Do not silently give Super Admin unlimited academic access.
+
+---
+
+# 28. API Authorization
+
+Every API request must validate:
+
+1. Authentication
+2. Tenant
+3. Module availability
+4. User role
+5. Permission
+6. Resource scope
+
+Example:
+
+```text
+GET /api/attendance/students/123
+```
+
+Backend checks:
+
+```text
+Authenticated?
+       ↓
+Which tenant?
+       ↓
+Is Attendance enabled?
+       ↓
+Does user have attendance.view?
+       ↓
+Does user have access to student 123?
+       ↓
+Return data
+```
+
+---
+
+# 29. Frontend Architecture
+
+The frontend should also understand module availability.
+
+Create a centralized module registry.
+
+Example:
+
+```text
+modules = {
+    attendance: true,
+    accounts: true,
+    library: false,
+    examination: true,
+    hostel: false
+}
+```
+
+However, frontend module checks are only for UI.
+
+The backend must remain the final authority.
+
+---
+
+# 30. Backend Architecture
+
+Separate the application into logical modules/services.
+
+Example:
+
+```text
+/auth
+/tenants
+/users
+/roles
+/permissions
+
+/modules
+/subscriptions
+
+/students
+/faculty
+/departments
+/courses
+
+/attendance
+/assignments
+/examinations
+/results
+/admit-cards
+
+/accounts
+/fees
+/payments
+
+/library
+/timetable
+/hr
+/payroll
+/hostel
+/transport
+
+/notifications
+/reports
+/documents
+/audit
+```
+
+Each module should be independently maintainable.
+
+---
+
+# 31. Database Entities
+
+Platform-level entities:
+
+* platform_users
+* tenants
+* tenant_settings
+* modules
+* module_features
+* module_dependencies
+* plans
+* plan_modules
+* subscriptions
+* tenant_modules
+* platform_audit_logs
+
+Tenant-level entities:
+
+* users
+* roles
+* permissions
+* role_permissions
+* user_roles
+* departments
+* courses
+* students
+* faculty
+* subjects
+* attendance
+* assignments
+* assignment_submissions
+* examinations
+* exam_schedules
+* marks
+* results
+* admit_cards
+* fee_structures
+* student_fees
+* payments
+* receipts
+* library_books
+* library_transactions
+* timetables
+* notices
+* notifications
+* documents
+* audit_logs
+
+Add `tenant_id` to tenant-owned entities as required.
+
+---
+
+# 32. Important Distinction
+
+The system must distinguish between:
+
+### Module Availability
+
+"Does ABC College have Accounts?"
+
+and
+
+### User Permission
+
+"Can Accountant John access Accounts?"
+
+These are NOT the same thing.
+
+The logic is:
+
+```text
+Module Available to Tenant
+AND
+User Has Permission
+=
+Access Granted
+```
+
+Otherwise:
+
+```text
+Access Denied
+```
+
+---
+
+# 33. Example Scenario
+
+Suppose you create:
+
+**ABC College**
+
+You enable:
+
+* Student Management
+* Attendance
+* Assignments
+* Examination
+* Results
+* Accounts
+* Fees
+* Library
+
+You then give ABC College its College Admin account.
+
+From that point onward:
+
+ABC College Admin controls:
+
+* Professors
+* Accountants
+* Librarians
+* Examination staff
+* Students
+* Roles
+* Permissions
+
+For example, ABC College can decide:
+
+```text
+Professor:
+Student Management → View
+Attendance → Create/Edit
+Assignments → Create/Evaluate
+Examination → View
+Results → View
+Accounts → No Access
+Library → No Access
+```
+
+Another college might configure its professors differently.
+
+The ERP platform must support both configurations without custom coding.
+
+---
+
+# 34. Important Security Principle
+
+Never implement authorization as:
+
+```text
+if user.role == "super_admin":
+    allow_everything()
+```
+
+Instead distinguish:
+
+```text
+platform permissions
+```
+
+from:
+
+```text
+tenant permissions
+```
+
+A platform administrator manages the platform.
+
+A college administrator manages the college.
+
+---
+
+# 35. Future White-Label Support
+
+Design the architecture so each college can optionally have:
+
+* College logo
+* College name
+* Brand colors
+* Custom domain/subdomain
+* Email templates
+* Notification templates
+* PDF templates
+* Login page branding
+
+Example:
+
+```text
+abc.yourerp.com
+```
+
+or eventually:
+
+```text
+erp.abccollege.edu
+```
+
+This should be tenant-specific.
+
+---
+
+# 36. Final Architecture Goal
+
+The final system should behave like a **modular ERP platform / SaaS product**.
+
+The architecture should be:
+
+```text
+                    ERP PLATFORM
+                         │
+                  PLATFORM SUPER ADMIN
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+          College A   College B   College C
+              │          │          │
+         Enabled      Enabled      Enabled
+         Modules      Modules      Modules
+              │          │          │
+        College Admin College Admin College Admin
+              │          │          │
+          Custom Roles Custom Roles Custom Roles
+              │          │          │
+            Users      Users       Users
+```
+
+The platform must allow different colleges to have completely different ERP configurations while using the same core application.
+
+---
+
+# 37. Non-Negotiable Rules
+
+1. This is a multi-tenant system.
+
+2. Tenant data must be isolated.
+
+3. Platform Super Admin controls which modules a college receives.
+
+4. Platform Super Admin does NOT manage individual college user permissions by default.
+
+5. College Admin controls internal roles and permissions.
+
+6. College Admin cannot activate a module that the Platform Super Admin has not enabled.
+
+7. A disabled module must be inaccessible through both UI and API.
+
+8. Module availability and user permissions are separate concepts.
+
+9. Support module dependencies.
+
+10. Never delete module data simply because a module is disabled.
+
+11. Backend authorization is mandatory.
+
+12. Frontend permission checks are only for user experience.
+
+13. Every sensitive permission/configuration change must be audited.
+
+14. Colleges must be able to create custom roles.
+
+15. Permissions must support module, feature, action and scope.
+
+16. The architecture must allow new modules to be added without rewriting the entire ERP.
+
+17. The system should be SaaS-ready and capable of supporting hundreds or thousands of colleges.
+
+18. Do not hard-code college-specific workflows into the platform.
+
+19. College-specific settings must be configurable by the college.
+
+20. The platform should remain generic enough to eventually support universities, schools, institutes and other educational organizations.
+
+---
+
+# 38. Development Instruction
+
+Before implementing the application:
+
+1. Design the multi-tenant architecture.
+2. Design the tenant isolation strategy.
+3. Design the platform database.
+4. Design the tenant database.
+5. Create the module registry architecture.
+6. Create the module dependency system.
+7. Create subscription/plan architecture.
+8. Create the two-level authorization system.
+9. Create the role/permission system.
+10. Create the tenant onboarding workflow.
+11. Create the Super Admin dashboard.
+12. Create the College Admin dashboard.
+13. Design dynamic navigation.
+14. Design API authorization middleware.
+15. Create the ER diagram.
+16. Create the permission matrix.
+17. Create the complete API structure.
+18. Create the frontend architecture.
+19. Then implement the modules incrementally.
+
+Do not create a simple CRUD application.
+
+Build the foundation as a **modular, multi-tenant ERP platform** so that additional modules can be added later without changing the fundamental architecture.

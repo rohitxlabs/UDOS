@@ -7,6 +7,7 @@ import { createCollege, type CreateCollegeState } from "./actions";
 import { Modal } from "@/components/dashboard/modal";
 import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
 import { TextField, FormError, SubmitButton } from "@/components/dashboard/form-field";
+import { moduleWithPrerequisites, moduleWithDependents, MODULE_DEPENDENCIES, type Module } from "@/lib/permissions";
 
 type ModuleOption = { key: string; name: string; description: string | null };
 
@@ -25,6 +26,27 @@ function CreateCollegeFormFields({ modules, onDone }: { modules: ModuleOption[];
   const [name, setName] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [slug, setSlug] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const available = new Set(modules.map((m) => m.key));
+  const labelOf = (key: string) => modules.find((m) => m.key === key)?.name ?? key;
+
+  // Same closure the server applies when a module is toggled on a live
+  // college, so onboarding and later changes behave identically: ticking
+  // pulls in prerequisites, unticking releases dependents.
+  function toggleModule(key: string, next: boolean) {
+    const group = (next ? moduleWithPrerequisites(key as Module) : moduleWithDependents(key as Module)).filter((k) =>
+      available.has(k)
+    );
+    setSelected((prev) => {
+      const out = new Set(prev);
+      for (const k of group) {
+        if (next) out.add(k);
+        else out.delete(k);
+      }
+      return out;
+    });
+  }
 
   if (state.success) {
     return (
@@ -103,11 +125,28 @@ function CreateCollegeFormFields({ modules, onDone }: { modules: ModuleOption[];
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-slate-700">Modules to enable</span>
+        <p className="text-xs text-slate-500">
+          Ticking a module also ticks whatever it needs to work; unticking one releases whatever depends on it.
+        </p>
         <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-3">
           {modules.map((m) => (
-            <label key={m.key} className="flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" name="moduleKeys" value={m.key} className="rounded border-slate-300" />
-              {m.name}
+            <label key={m.key} className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="moduleKeys"
+                value={m.key}
+                checked={selected.has(m.key)}
+                onChange={(e) => toggleModule(m.key, e.target.checked)}
+                className="mt-0.5 rounded border-slate-300"
+              />
+              <span className="min-w-0">
+                <span className="block">{m.name}</span>
+                {(MODULE_DEPENDENCIES[m.key as Module] ?? []).length > 0 && (
+                  <span className="block text-[11px] leading-tight text-slate-400">
+                    needs {(MODULE_DEPENDENCIES[m.key as Module] ?? []).map(labelOf).join(", ")}
+                  </span>
+                )}
+              </span>
             </label>
           ))}
         </div>

@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { prisma as platformDb } from "@/lib/prisma";
 import { requirePlatform } from "@/lib/auth/dal";
 import { ModuleToggles } from "./module-toggles";
+import { MODULE_DEPENDENCIES, type Module } from "@/lib/permissions";
 import { AdminAccess } from "./admin-access";
+import { DatabasePanel } from "./database-panel";
 
 export default async function CollegeDetailPage({ params }: PageProps<"/platform/colleges/[id]">) {
   await requirePlatform();
@@ -28,6 +30,15 @@ export default async function CollegeDetailPage({ params }: PageProps<"/platform
         <AdminAccess collegeId={college.id} collegeName={college.name} />
       </div>
 
+      <DatabasePanel
+        collegeId={college.id}
+        encryptedDatabaseUrl={college.databaseUrlEncrypted}
+        dbStatus={college.dbStatus}
+        dbError={college.dbError}
+        dbModels={college.dbModels}
+        dbInitializedAt={college.dbInitializedAt}
+      />
+
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Modules</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -42,6 +53,7 @@ export default async function CollegeDetailPage({ params }: PageProps<"/platform
               name: m.name,
               description: m.description,
               enabled: enabledByKey.get(m.id) ?? false,
+              requires: MODULE_DEPENDENCIES[m.key as Module] ?? [],
             }))}
           />
         </div>

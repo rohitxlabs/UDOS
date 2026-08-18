@@ -45,3 +45,5 @@ next-env.d.ts
 
 /app/generated/prisma
 .prompt.txt
+# Generated per-college Prisma schemas (built at onboarding, never committed)
+.prisma-college/

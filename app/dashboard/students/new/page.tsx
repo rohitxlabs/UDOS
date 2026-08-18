@@ -25,9 +25,9 @@ export default async function NewStudentPage() {
         <h1 className="text-lg font-semibold text-slate-900">New student</h1>
         <div className="mt-6">
           <SetupRequired
-            message="Add at least one section before enrolling students."
-            href="/dashboard/sections"
-            cta="Go to Sections"
+            message="This form needs an existing course, semester and section. Guided enrolment can create whatever is missing as it goes."
+            href="/dashboard/students/enroll"
+            cta="Use guided enrolment"
           />
         </div>
       </div>

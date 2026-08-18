@@ -83,6 +83,69 @@ const UNGATED_MODULES: Module[] = ["dashboard", "users", "roles", "settings", "a
 // real screen exists for).
 export const GATED_MODULES: Module[] = MODULES.filter((m) => !UNGATED_MODULES.includes(m));
 
+// Which modules each module cannot function without (spec section 11). A
+// module is useless without the data its screens are built from: Attendance
+// has nothing to mark without Students and Subjects, Payments has nothing to
+// collect against without Fees.
+//
+// Only *direct* prerequisites are listed. Everything transitive is derived
+// by moduleWithPrerequisites(), so this table stays readable and there is
+// exactly one place to edit when a module gains a dependency.
+export const MODULE_DEPENDENCIES: Partial<Record<Module, Module[]>> = {
+  courses: ["departments"],
+  semesters: ["courses", "academicYears"],
+  sections: ["semesters"],
+  subjects: ["semesters"],
+  students: ["sections"],
+  faculty: ["departments"],
+  attendance: ["students", "subjects"],
+  assignments: ["students", "subjects", "faculty"],
+  timetable: ["sections", "subjects", "faculty"],
+  exams: ["semesters", "subjects"],
+  marks: ["exams", "students"],
+  results: ["marks"],
+  admitCards: ["exams", "students"],
+  fees: ["students"],
+  payments: ["fees"],
+  scholarships: ["students", "academicYears"],
+  library: ["students"],
+  documents: ["students"],
+};
+
+// Every module that must be enabled for `moduleKey` to work, including the
+// module itself — the full transitive closure, so enabling one thing turns
+// on everything underneath it in a single step.
+export function moduleWithPrerequisites(moduleKey: Module): Module[] {
+  const seen = new Set<Module>();
+  const walk = (key: Module) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    for (const dep of MODULE_DEPENDENCIES[key] ?? []) walk(dep);
+  };
+  walk(moduleKey);
+  return [...seen];
+}
+
+// The mirror image: everything that would stop working if `moduleKey` were
+// switched off. Used to cascade a disable rather than silently leaving a
+// module enabled with its foundations removed (spec section 11: "Do not
+// silently break modules").
+export function moduleWithDependents(moduleKey: Module): Module[] {
+  const seen = new Set<Module>([moduleKey]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const key of MODULES) {
+      if (seen.has(key)) continue;
+      if ((MODULE_DEPENDENCIES[key] ?? []).some((dep) => seen.has(dep))) {
+        seen.add(key);
+        grew = true;
+      }
+    }
+  }
+  return [...seen];
+}
+
 export function hasModule(enabledModules: Set<string>, moduleKey: Module): boolean {
   return UNGATED_MODULES.includes(moduleKey) || enabledModules.has(moduleKey);
 }

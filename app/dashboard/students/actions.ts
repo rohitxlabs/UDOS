@@ -8,6 +8,13 @@ import { hashPassword, generatePassword } from "@/lib/password";
 import { writeTenantAuditLog } from "@/lib/audit";
 import type { PrismaClient as TenantPrismaClient } from "@/app/generated/tenant-prisma/client";
 
+// Prisma's default interactive-transaction budget is 5s. That is fine
+// against a local database but not against a hosted one: this block does
+// several dependent round-trips plus a bcrypt hash, and the whole point of
+// the transaction is that a partially-enrolled student never lands. Give it
+// room rather than trading away atomicity.
+const TX_OPTIONS = { timeout: 30_000, maxWait: 15_000 };
+
 const emptyToUndefined = (value: unknown) => (value === "" || value === null ? undefined : value);
 const GENDERS = ["MALE", "FEMALE", "OTHER"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;
@@ -115,7 +122,7 @@ export async function createStudent(_prev: CreateStudentState, formData: FormDat
     });
 
     return { ...account, studentId: student.id };
-  });
+  }, TX_OPTIONS);
 
   if ("error" in result) return { error: result.error };
 

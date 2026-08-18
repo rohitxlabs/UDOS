@@ -39,6 +39,18 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+// How far a college's own database has got through initialization. Kept
+// separate from TenantStatus (the business lifecycle) on purpose: a college
+// can be commercially ACTIVE while its database is still being built, and a
+// failed build must be visible without pretending the tenant was never
+// created (spec: "Do not silently report success when initialization fails").
+enum DatabaseInitStatus {
+  PENDING
+  INITIALIZING
+  READY
+  FAILED
+}
+
 enum TenantStatus {
   CREATED
   PROVISIONING
@@ -72,6 +84,15 @@ model College {
   // Encrypted at rest (lib/tenant-db.ts) — this college's own database
   // connection string. Never sent to the frontend after it's saved.
   databaseUrlEncrypted String
+
+  // Initialization state of that database. dbError holds the failure reason
+  // so a failed onboarding can be diagnosed without re-running it blind, and
+  // dbModels records exactly which models were created for this college —
+  // which depends on the modules it was granted.
+  dbStatus        DatabaseInitStatus @default(PENDING)
+  dbError         String?
+  dbModels        String[]           @default([])
+  dbInitializedAt DateTime?
 
   tenantModules TenantModule[]
   subscriptions Subscription[]

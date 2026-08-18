@@ -2,18 +2,15 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { Client } from "pg";
 import { prisma as platformDb } from "@/lib/prisma";
 import { requirePlatform } from "@/lib/auth/dal";
-import { encryptDatabaseUrl, withPgSchema, getTenantClient } from "@/lib/tenant-db";
+import { encryptDatabaseUrl, decryptDatabaseUrl, withPgSchema, getTenantClient } from "@/lib/tenant-db";
 import { createLoginAccount } from "@/lib/provisioning";
+import { initializeCollegeDatabase } from "@/lib/college-db-init";
 import { generatePassword, hashPassword } from "@/lib/password";
 import { writePlatformAuditLog } from "@/lib/audit";
+import { moduleWithPrerequisites, moduleWithDependents, type Module } from "@/lib/permissions";
 import type { PermissionAction } from "@/app/generated/tenant-prisma/client";
-
-const execFileAsync = promisify(execFile);
 
 const emptyToUndefined = (v: unknown) => (v === "" || v === null ? undefined : v);
 
@@ -21,10 +18,6 @@ const emptyToUndefined = (v: unknown) => (v === "" || v === null ? undefined : v
 // because provisioning creates it and updateCollegeModules has to find it
 // again later to keep its permissions in step with the modules granted.
 const COLLEGE_ADMIN_ROLE = "College Admin";
-// Applying the tenant schema to a fresh hosted database takes ~20s; this is
-// a generous ceiling so a slow provider fails with a clear error instead of
-// hanging the onboarding form indefinitely.
-const PROVISION_TIMEOUT_MS = 3 * 60 * 1000;
 const FULL_ACCESS = ["VIEW", "CREATE", "EDIT", "DELETE", "APPROVE", "EXPORT", "PRINT"] as const;
 
 const createCollegeSchema = z.object({
@@ -99,32 +92,11 @@ export async function createCollege(_prev: CreateCollegeState, formData: FormDat
   const schemaName = `tenant_${slug.replace(/-/g, "_")}`;
   const tenantUrl = withPgSchema(databaseUrl, schemaName);
 
-  // 1. Ensure the Postgres namespace exists, then apply the tenant schema
-  // to it. This is the actual "provision a database for this college"
-  // step (spec section 10/12) — additive only, never touches other schemas.
-  try {
-    const pg = new Client({ connectionString: databaseUrl });
-    await pg.connect();
-    await pg.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
-    await pg.end();
-
-    // Applying the schema takes ~20s against a hosted Postgres. It must be
-    // awaited rather than run with execFileSync: the sync version blocks
-    // the Node event loop for that whole time, which stalls the server's
-    // response stream and kills this request ("destination stream closed
-    // early") before provisioning can report back.
-    await execFileAsync("npx", ["prisma", "db", "push", "--config", "prisma/tenant/prisma.config.ts"], {
-      cwd: process.cwd(),
-      env: { ...process.env, TENANT_DATABASE_URL: tenantUrl },
-      timeout: PROVISION_TIMEOUT_MS,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: `Could not provision the college database: ${message.slice(0, 300)}` };
-  }
-
-  // 2. Register the tenant in the platform DB.
+  // 1. Register the tenant in the master database first. It has to exist
+  // before initialization runs, because a failure needs a row to record its
+  // status and error against — "created but its database failed" is a real
+  // state the platform owner must be able to see and retry, not something to
+  // swallow (spec: never silently report success).
   const college = await platformDb.college.create({
     data: {
       name,
@@ -133,8 +105,25 @@ export async function createCollege(_prev: CreateCollegeState, formData: FormDat
       databaseUrlEncrypted: encryptDatabaseUrl(tenantUrl),
       status: "ACTIVE",
       isActive: true,
+      dbStatus: "PENDING",
     },
   });
+
+  // 2. Build this college's own database, containing only the tables its
+  // selected modules need. Runs against the supplied Neon URL, never the
+  // master DATABASE_URL.
+  const init = await initializeCollegeDatabase({
+    collegeId: college.id,
+    databaseUrl,
+    schemaName,
+    moduleKeys,
+  });
+
+  if (!init.ok) {
+    // The college row stays, marked FAILED with the reason, so the failure is
+    // visible and retryable rather than vanishing.
+    return { error: `College database initialization failed: ${init.error.slice(0, 300)}` };
+  }
 
   try {
     const db = getTenantClient(college.id, college.databaseUrlEncrypted);
@@ -253,11 +242,19 @@ export async function createCollege(_prev: CreateCollegeState, formData: FormDat
     revalidatePath("/platform/colleges");
     return { success: { collegeName: name, adminUsername: account.username, adminPassword: account.password } };
   } catch (err) {
-    // Roll back the platform-side registration so a failed provisioning
-    // attempt doesn't leave a half-set-up, unusable tenant behind.
-    await platformDb.college.delete({ where: { id: college.id } }).catch(() => {});
+    // The college row is deliberately kept. Its database exists and may
+    // already hold tables, so deleting the only record of it would strand
+    // that data and lose the connection string needed to reach it. Mark the
+    // failure instead — onboarding can be retried, and retrying is safe
+    // because every step of it is idempotent.
     const message = err instanceof Error ? err.message : String(err);
-    return { error: `College database was created but setup failed: ${message.slice(0, 300)}` };
+    await platformDb.college
+      .update({
+        where: { id: college.id },
+        data: { dbStatus: "FAILED", dbError: `Admin setup failed: ${message}`.slice(0, 1000) },
+      })
+      .catch(() => {});
+    return { error: `College database was created but admin setup failed: ${message.slice(0, 300)}` };
   }
 }
 
@@ -279,49 +276,75 @@ export async function toggleCollegeActive(collegeId: string, nextActive: boolean
   revalidatePath("/platform/colleges");
 }
 
-export async function updateCollegeModules(collegeId: string, moduleKey: string, enabled: boolean) {
+// Toggling one module moves everything that logically travels with it
+// (spec section 11). Enabling pulls in whatever it cannot work without;
+// disabling takes down whatever would be left broken. Both directions used
+// to just throw "enable that first" / "disable that first", which pushed
+// the graph onto the platform admin to solve by hand.
+//
+// Returns what actually changed so the UI can say so rather than silently
+// ticking half the list.
+export async function updateCollegeModules(
+  collegeId: string,
+  moduleKey: string,
+  enabled: boolean
+): Promise<{ changed: string[] }> {
   const ctx = await requirePlatform();
-  const targetModule = await platformDb.module.findUniqueOrThrow({ where: { key: moduleKey } });
+  await platformDb.module.findUniqueOrThrow({ where: { key: moduleKey } });
 
-  if (enabled) {
-    const dependencies = await platformDb.moduleDependency.findMany({
-      where: { moduleId: targetModule.id },
-      include: { dependsOnModule: true },
+  // The closure is computed from the declaration in lib/permissions.ts, so
+  // the cascade cannot drift from what the application actually requires.
+  const affected = enabled
+    ? moduleWithPrerequisites(moduleKey as Module)
+    : moduleWithDependents(moduleKey as Module);
+
+  const modules = await platformDb.module.findMany({ where: { key: { in: affected }, isActive: true } });
+  const existing = await platformDb.tenantModule.findMany({
+    where: { collegeId, moduleId: { in: modules.map((m) => m.id) } },
+  });
+  const stateByModuleId = new Map(existing.map((row) => [row.moduleId, row.enabled]));
+
+  // Only touch modules not already in the target state — this keeps the
+  // audit log meaningful and the "changed" list honest.
+  const toChange = modules.filter((m) => (stateByModuleId.get(m.id) ?? false) !== enabled);
+  if (toChange.length === 0) return { changed: [] };
+
+  for (const target of toChange) {
+    await platformDb.tenantModule.upsert({
+      where: { collegeId_moduleId: { collegeId, moduleId: target.id } },
+      update: { enabled, enabledAt: enabled ? new Date() : null, enabledById: enabled ? ctx.userId : null },
+      create: {
+        collegeId,
+        moduleId: target.id,
+        enabled,
+        enabledAt: enabled ? new Date() : null,
+        enabledById: ctx.userId,
+      },
     });
-    for (const dep of dependencies) {
-      const depEnabled = await platformDb.tenantModule.findUnique({
-        where: { collegeId_moduleId: { collegeId, moduleId: dep.dependsOnId } },
-      });
-      if (!depEnabled?.enabled) {
-        throw new Error(`"${targetModule.name}" depends on "${dep.dependsOnModule.name}" — enable that first`);
-      }
-    }
-  } else {
-    const dependents = await platformDb.moduleDependency.findMany({
-      where: { dependsOnId: targetModule.id },
-      include: { module: true },
-    });
-    for (const dependent of dependents) {
-      const dependentEnabled = await platformDb.tenantModule.findUnique({
-        where: { collegeId_moduleId: { collegeId, moduleId: dependent.moduleId } },
-      });
-      if (dependentEnabled?.enabled) {
-        throw new Error(`"${dependent.module.name}" depends on this module — disable that first`);
-      }
-    }
   }
 
-  await platformDb.tenantModule.upsert({
-    where: { collegeId_moduleId: { collegeId, moduleId: targetModule.id } },
-    update: { enabled, enabledAt: enabled ? new Date() : null, enabledById: enabled ? ctx.userId : null },
-    create: {
+  // A module the college did not have means tables its screens need may not
+  // exist in that college's database yet. Re-run initialization with the full
+  // enabled set: it is additive and idempotent, so this creates the newly
+  // required tables and leaves every existing one — and its data — alone.
+  if (enabled) {
+    const college = await platformDb.college.findUniqueOrThrow({ where: { id: collegeId } });
+    const enabledNow = await platformDb.tenantModule.findMany({
+      where: { collegeId, enabled: true },
+      select: { module: { select: { key: true } } },
+    });
+    const url = decryptDatabaseUrl(college.databaseUrlEncrypted);
+    const schemaName = new URL(url).searchParams.get("schema") ?? "public";
+    const init = await initializeCollegeDatabase({
       collegeId,
-      moduleId: targetModule.id,
-      enabled,
-      enabledAt: enabled ? new Date() : null,
-      enabledById: ctx.userId,
-    },
-  });
+      databaseUrl: url,
+      schemaName,
+      moduleKeys: enabledNow.map((row) => row.module.key),
+    });
+    if (!init.ok) {
+      throw new Error(`Module enabled, but the college database could not be updated: ${init.error.slice(0, 200)}`);
+    }
+  }
 
   // Granting a module has to leave the college able to actually use it.
   // Provisioning gives the non-deletable "College Admin" role full access to
@@ -339,11 +362,13 @@ export async function updateCollegeModules(collegeId: string, moduleKey: string,
     const adminRole = await db.role.findFirst({ where: { isSystem: true } });
     if (adminRole) {
       await db.rolePermission.createMany({
-        data: FULL_ACCESS.map((action) => ({
-          roleId: adminRole.id,
-          moduleKey,
-          action: action as PermissionAction,
-        })),
+        data: toChange.flatMap((target) =>
+          FULL_ACCESS.map((action) => ({
+            roleId: adminRole.id,
+            moduleKey: target.key,
+            action: action as PermissionAction,
+          }))
+        ),
         skipDuplicates: true,
       });
     }
@@ -358,11 +383,13 @@ export async function updateCollegeModules(collegeId: string, moduleKey: string,
     action: enabled ? "MODULE_ENABLED" : "MODULE_DISABLED",
     module: "colleges",
     recordId: collegeId,
-    newValue: { moduleKey },
+    newValue: { requested: moduleKey, cascaded: toChange.map((m) => m.key) },
   });
 
   revalidatePath(`/platform/colleges/${collegeId}`);
+  return { changed: toChange.map((m) => m.key) };
 }
+
 
 // The College Admin's password is shown exactly once, at onboarding. If the
 // platform admin closed that dialog before passing it on, the college was

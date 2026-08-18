@@ -35,12 +35,14 @@ export async function createLoginAccount(
   // onboarding cascade-deletes the directory entries but deliberately
   // leaves the tenant database intact, so a name can be absent from the
   // directory while still being taken inside the tenant.
+  // Checked one after the other rather than with Promise.all: `db` may be a
+  // transaction client, which is a single connection that cannot serve two
+  // queries at once.
   const isTaken = async (candidate: string) => {
-    const [inDirectory, inTenant] = await Promise.all([
-      platformDb.tenantUserDirectory.findUnique({ where: { username: candidate } }),
-      db.user.findUnique({ where: { username: candidate } }),
-    ]);
-    return Boolean(inDirectory || inTenant);
+    const inDirectory = await platformDb.tenantUserDirectory.findUnique({ where: { username: candidate } });
+    if (inDirectory) return true;
+    const inTenant = await db.user.findUnique({ where: { username: candidate } });
+    return Boolean(inTenant);
   };
 
   let username = params.customUsername?.trim();

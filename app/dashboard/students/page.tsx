@@ -53,13 +53,24 @@ export default async function StudentsPage({ searchParams }: PageProps<"/dashboa
           <p className="text-sm text-slate-500">{total} student{total === 1 ? "" : "s"} enrolled.</p>
         </div>
         {can(ctx, "students", "create") && (
-          <Link
-            href="/dashboard/students/new"
-            className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            New student
-          </Link>
+          <div className="flex gap-2">
+            {/* The detailed form still exists for a student being added to an
+                academic structure that is already fully set up; enrolment is
+                the primary path because it can build what is missing. */}
+            <Link
+              href="/dashboard/students/new"
+              className="flex items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Detailed form
+            </Link>
+            <Link
+              href="/dashboard/students/enroll"
+              className="flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Enrol student
+            </Link>
+          </div>
         )}
       </div>
 

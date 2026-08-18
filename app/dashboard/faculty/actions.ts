@@ -91,7 +91,7 @@ export async function createFaculty(_prev: CreateFacultyState, formData: FormDat
     });
 
     return { ...account, teacherId: teacher.id };
-  });
+  }, { timeout: 30_000, maxWait: 15_000 });
 
   if ("error" in result) return { error: result.error };
 

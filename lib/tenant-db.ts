@@ -112,3 +112,22 @@ export function getTenantClient(collegeId: string, encryptedDatabaseUrl: string)
   clientCache.set(collegeId, { client, lastUsed: Date.now() });
   return client;
 }
+
+// The non-sensitive parts of a tenant's connection string, for the platform
+// owner's own database view (spec section 23). Credentials are deliberately
+// dropped rather than masked — a Super Admin needs to know *which* database
+// a college sits in, never how to authenticate to it directly, and this is
+// the only shape that ever leaves the server.
+export function describeTenantDatabase(encryptedDatabaseUrl: string): {
+  host: string;
+  database: string;
+  schema: string;
+} {
+  const url = new URL(decryptDatabaseUrl(encryptedDatabaseUrl));
+  return {
+    host: url.hostname,
+    database: url.pathname.replace(/^\//, "") || "—",
+    // Tables live in a per-college namespace, not `public` — see withPgSchema.
+    schema: url.searchParams.get("schema") ?? "public",
+  };
+}

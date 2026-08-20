@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
 import { createLoginAccount } from "@/lib/provisioning";
 import { hashPassword, generatePassword } from "@/lib/password";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const emptyToUndefined = (value: unknown) => (value === "" || value === null ? undefined : value);
@@ -68,7 +68,7 @@ export async function createFaculty(_prev: CreateFacultyState, formData: FormDat
   if (existingEmployee) return { error: `Employee ID "${employeeId}" is already in use` };
 
   const result = await ctx.db.$transaction(async (tx) => {
-    const account = await createLoginAccount(ctx.collegeId, tx, {
+    const account = await createLoginAccount(tx, {
       name,
       roleId,
       email,
@@ -95,7 +95,7 @@ export async function createFaculty(_prev: CreateFacultyState, formData: FormDat
 
   if ("error" in result) return { error: result.error };
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FACULTY_CREATED",
@@ -154,7 +154,7 @@ export async function updateFaculty(_prev: UpdateFacultyState, formData: FormDat
     ctx.db.user.update({ where: { id: teacher.userId }, data: { name, email: email || null, phone: phone || null } }),
   ]);
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FACULTY_UPDATED",
@@ -174,7 +174,7 @@ export async function toggleFacultyActive(id: string, nextActive: boolean) {
 
   await ctx.db.user.update({ where: { id: teacher.userId }, data: { isActive: nextActive } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: nextActive ? "FACULTY_ACTIVATED" : "FACULTY_DEACTIVATED",
@@ -198,7 +198,7 @@ export async function assignFacultySubject(teacherId: string, subjectId: string,
     throw err;
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FACULTY_SUBJECT_ASSIGNED",
@@ -219,7 +219,7 @@ export async function unassignFacultySubject(facultySubjectId: string, teacherId
     throw new Error(friendlyDeleteError(err, "assignment"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FACULTY_SUBJECT_UNASSIGNED",
@@ -239,7 +239,7 @@ export async function resetFacultyPassword(id: string): Promise<{ password: stri
 
   await ctx.db.user.update({ where: { id: teacher.userId }, data: { passwordHash, mustChangePassword: true } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FACULTY_PASSWORD_RESET",

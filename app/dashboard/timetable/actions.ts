@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z
@@ -71,7 +71,7 @@ export async function saveTimetableSlot(_prev: TimetableState, formData: FormDat
           data: { sectionId, subjectId, teacherId, dayOfWeek, periodNumber, startTime, endTime, room: room || null, academicYearId },
         });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "TIMETABLE_SLOT_UPDATED" : "TIMETABLE_SLOT_CREATED",
@@ -99,7 +99,7 @@ export async function deleteTimetableSlot(id: string) {
     throw new Error(friendlyDeleteError(err, "timetable slot"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "TIMETABLE_SLOT_DELETED",

@@ -6,7 +6,7 @@ export function toDateTimeLocal(date: Date): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-// `date` inputs want a plain calendar date. Tenant date columns are stored
+// `date` inputs want a plain calendar date. College date columns are stored
 // at UTC midnight, so read them back in UTC to avoid drifting a day.
 export function toDateInput(date: Date): string {
   return date.toISOString().slice(0, 10);

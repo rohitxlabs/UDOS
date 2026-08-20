@@ -12,7 +12,7 @@ import {
   PlaneTakeoff,
   type LucideIcon,
 } from "lucide-react";
-import { requireTenant } from "@/lib/auth/dal";
+import { requireCollege } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { formatMoney, toNumber } from "@/lib/format";
 
@@ -55,7 +55,7 @@ function StatCard({
 }
 
 export default async function DashboardPage() {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   // The dashboard is assembled from whatever this user can actually reach:
   // a module the platform never enabled for this college, or one this role

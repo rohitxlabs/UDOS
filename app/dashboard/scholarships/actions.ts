@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -55,7 +55,7 @@ export async function saveScholarship(_prev: ScholarshipState, formData: FormDat
     ? await ctx.db.scholarship.update({ where: { id }, data })
     : await ctx.db.scholarship.create({ data });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "SCHOLARSHIP_UPDATED" : "SCHOLARSHIP_CREATED",
@@ -80,7 +80,7 @@ export async function deleteScholarship(id: string) {
     throw new Error(friendlyDeleteError(err, "scholarship"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "SCHOLARSHIP_DELETED",
@@ -106,7 +106,7 @@ export async function approveScholarship(id: string): Promise<{ error?: string; 
     data: { approvedById: ctx.userId, approvedAt: new Date() },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "SCHOLARSHIP_APPROVED",

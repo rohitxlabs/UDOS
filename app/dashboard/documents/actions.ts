@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -32,7 +32,7 @@ export async function saveDocument(_prev: DocumentState, formData: FormData): Pr
   // A newly attached document always starts unverified, whoever uploads it.
   const document = await ctx.db.document.create({ data: { studentId, type, fileUrl, verified: false } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "DOCUMENT_UPLOADED",
@@ -56,7 +56,7 @@ export async function setDocumentVerified(id: string, verified: boolean): Promis
 
   await ctx.db.document.update({ where: { id }, data: { verified } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: verified ? "DOCUMENT_VERIFIED" : "DOCUMENT_UNVERIFIED",
@@ -79,7 +79,7 @@ export async function deleteDocument(id: string) {
     throw new Error(friendlyDeleteError(err, "document"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "DOCUMENT_DELETED",

@@ -47,3 +47,5 @@ next-env.d.ts
 .prompt.txt
 # Generated per-college Prisma schemas (built at onboarding, never committed)
 .prisma-college/
+platform-db-archive.json
+college-db-legacy-users.json

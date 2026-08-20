@@ -12,7 +12,7 @@ export type ModuleRow = {
   description: string | null;
   isActive: boolean;
   dependsOn: string[];
-  collegesUsing: number;
+  granted: boolean;
 };
 
 export function ModulesTable({ modules }: { modules: ModuleRow[] }) {
@@ -37,7 +37,7 @@ export function ModulesTable({ modules }: { modules: ModuleRow[] }) {
             <th className="px-4 py-3 font-medium">Module</th>
             <th className="px-4 py-3 font-medium">Key</th>
             <th className="px-4 py-3 font-medium">Depends on</th>
-            <th className="px-4 py-3 font-medium">Colleges using</th>
+            <th className="px-4 py-3 font-medium">Granted</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium text-right">Actions</th>
           </tr>
@@ -48,7 +48,16 @@ export function ModulesTable({ modules }: { modules: ModuleRow[] }) {
               <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
               <td className="px-4 py-3 text-slate-600">{m.key}</td>
               <td className="px-4 py-3 text-slate-600">{m.dependsOn.length ? m.dependsOn.join(", ") : "—"}</td>
-              <td className="px-4 py-3 text-slate-600">{m.collegesUsing}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                    (m.granted ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500")
+                  }
+                >
+                  {m.granted ? "Granted" : "Not granted"}
+                </span>
+              </td>
               <td className="px-4 py-3">
                 <span
                   className={

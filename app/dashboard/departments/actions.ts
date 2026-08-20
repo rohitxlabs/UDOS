@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -35,7 +35,7 @@ export async function saveDepartment(_prev: DepartmentState, formData: FormData)
       ? await ctx.db.department.update({ where: { id }, data: { name, code } })
       : await ctx.db.department.create({ data: { name, code } });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "DEPARTMENT_UPDATED" : "DEPARTMENT_CREATED",
@@ -63,7 +63,7 @@ export async function deleteDepartment(id: string) {
     throw new Error(friendlyDeleteError(err, "department"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "DEPARTMENT_DELETED",

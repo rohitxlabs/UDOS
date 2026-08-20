@@ -1,19 +1,18 @@
 import "server-only";
-import { prisma as platformDb } from "@/lib/prisma";
 import { hashPassword, generatePassword, usernameBase } from "@/lib/password";
-import type { Prisma as TenantPrisma, PrismaClient as TenantPrismaClient } from "@/app/generated/tenant-prisma/client";
+import type { Prisma as CollegePrisma, PrismaClient as CollegePrismaClient } from "@/app/generated/college-prisma/client";
 
-type TenantDb = TenantPrismaClient | TenantPrisma.TransactionClient;
+type CollegeDbLike = CollegePrismaClient | CollegePrisma.TransactionClient;
 
-// Shared account-provisioning logic used anywhere a college's login gets
+// Shared account-provisioning logic used anywhere a college login gets
 // created by an admin rather than through self-registration (there is no
-// self-registration). Writes the real user record into the tenant's own
-// database, and a thin routing entry into the platform's login directory
-// so the single login form can find which tenant database to check a
-// username against (tenant databases are not cross-queryable).
+// self-registration).
+//
+// A username only has to be unique inside this one database now — there is no
+// cross-college routing directory to keep in step, because there is no other
+// college on this deployment to route to.
 export async function createLoginAccount(
-  collegeId: string,
-  db: TenantDb,
+  db: CollegeDbLike,
   params: {
     name: string;
     roleId?: string | null;
@@ -21,29 +20,13 @@ export async function createLoginAccount(
     phone?: string | null;
     customUsername?: string | null;
     customPassword?: string | null;
-    // The tenant User who is creating this account. Null for the bootstrap
-    // College Admin: that one is created by the platform owner during
-    // onboarding, and a platform identity is not a tenant identity (spec
-    // section 16) — storing its id here would point this column at a user
-    // that does not exist in this database.
+    // The college User creating this account. Null for the bootstrap College
+    // Admin, which the deployment's seed creates before any college user
+    // exists to be its creator.
     createdById: string | null;
   }
 ): Promise<{ userId: string; username: string; password: string } | { error: string }> {
-  // A username has to be free in two places: the platform's login-routing
-  // directory (globally, so one username maps to exactly one tenant) and
-  // this tenant's own user table. They can disagree — a rolled-back
-  // onboarding cascade-deletes the directory entries but deliberately
-  // leaves the tenant database intact, so a name can be absent from the
-  // directory while still being taken inside the tenant.
-  // Checked one after the other rather than with Promise.all: `db` may be a
-  // transaction client, which is a single connection that cannot serve two
-  // queries at once.
-  const isTaken = async (candidate: string) => {
-    const inDirectory = await platformDb.tenantUserDirectory.findUnique({ where: { username: candidate } });
-    if (inDirectory) return true;
-    const inTenant = await db.user.findUnique({ where: { username: candidate } });
-    return Boolean(inTenant);
-  };
+  const isTaken = async (candidate: string) => Boolean(await db.user.findUnique({ where: { username: candidate } }));
 
   let username = params.customUsername?.trim();
   if (username) {
@@ -76,8 +59,6 @@ export async function createLoginAccount(
       createdById: params.createdById,
     },
   });
-
-  await platformDb.tenantUserDirectory.create({ data: { username, collegeId } });
 
   return { userId: user.id, username, password };
 }

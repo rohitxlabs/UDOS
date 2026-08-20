@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
 import { hashPassword, generatePassword } from "@/lib/password";
 import { createLoginAccount } from "@/lib/provisioning";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 // FormData.get() returns null for fields absent from the DOM (e.g. the
 // collapsed "advanced" section) and "" for present-but-empty fields —
@@ -50,7 +50,7 @@ export async function createUser(_prev: CreateUserState, formData: FormData): Pr
   const role = await ctx.db.role.findUnique({ where: { id: roleId } });
   if (!role) return { error: "Selected role no longer exists" };
 
-  const result = await createLoginAccount(ctx.collegeId, ctx.db, {
+  const result = await createLoginAccount(ctx.db, {
     name,
     roleId,
     email,
@@ -61,7 +61,7 @@ export async function createUser(_prev: CreateUserState, formData: FormData): Pr
   });
   if ("error" in result) return { error: result.error };
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "USER_CREATED",
@@ -80,7 +80,7 @@ export async function toggleUserActive(userId: string, nextActive: boolean) {
 
   const user = await ctx.db.user.update({ where: { id: userId }, data: { isActive: nextActive } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: nextActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",
@@ -102,7 +102,7 @@ export async function resetUserPassword(userId: string): Promise<{ password: str
     data: { passwordHash, mustChangePassword: true },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "USER_PASSWORD_RESET",

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const AUDIENCES = [
@@ -78,7 +78,7 @@ export async function saveNotice(_prev: NoticeState, formData: FormData): Promis
     ? await ctx.db.notice.update({ where: { id }, data })
     : await ctx.db.notice.create({ data: { ...data, createdById: ctx.userId } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "NOTICE_UPDATED" : "NOTICE_PUBLISHED",
@@ -100,7 +100,7 @@ export async function deleteNotice(id: string) {
     throw new Error(friendlyDeleteError(err, "notice"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "NOTICE_DELETED",

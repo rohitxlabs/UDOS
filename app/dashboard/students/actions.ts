@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
 import { createLoginAccount } from "@/lib/provisioning";
 import { hashPassword, generatePassword } from "@/lib/password";
-import { writeTenantAuditLog } from "@/lib/audit";
-import type { PrismaClient as TenantPrismaClient } from "@/app/generated/tenant-prisma/client";
+import { writeCollegeAuditLog } from "@/lib/audit";
+import type { PrismaClient as CollegePrismaClient } from "@/app/generated/college-prisma/client";
 
 // Prisma's default interactive-transaction budget is 5s. That is fine
 // against a local database but not against a hosted one: this block does
@@ -56,7 +56,7 @@ export type CreateStudentState = {
   success?: { username: string; password: string; name: string };
 };
 
-async function resolveSection(db: TenantPrismaClient, sectionId: string) {
+async function resolveSection(db: CollegePrismaClient, sectionId: string) {
   return db.section.findUnique({
     where: { id: sectionId },
     include: { semester: { include: { course: true } } },
@@ -82,7 +82,7 @@ export async function createStudent(_prev: CreateStudentState, formData: FormDat
   if (!section) return { error: "Section not found" };
 
   const result = await ctx.db.$transaction(async (tx) => {
-    const account = await createLoginAccount(ctx.collegeId, tx, {
+    const account = await createLoginAccount(tx, {
       name: data.name,
       roleId: data.roleId,
       email: data.email,
@@ -126,7 +126,7 @@ export async function createStudent(_prev: CreateStudentState, formData: FormDat
 
   if ("error" in result) return { error: result.error };
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "STUDENT_CREATED",
@@ -199,7 +199,7 @@ export async function updateStudent(_prev: UpdateStudentState, formData: FormDat
     }),
   ]);
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "STUDENT_UPDATED",
@@ -222,7 +222,7 @@ export async function resetStudentPassword(id: string): Promise<{ password: stri
 
   await ctx.db.user.update({ where: { id: student.userId }, data: { passwordHash, mustChangePassword: true } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "STUDENT_PASSWORD_RESET",

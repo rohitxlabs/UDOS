@@ -3,10 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 import type { Capability, Module } from "@/lib/permissions";
-import type { PermissionAction } from "@/app/generated/tenant-prisma/client";
+import type { PermissionAction } from "@/app/generated/college-prisma/client";
 
 const createRoleSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
@@ -22,7 +22,7 @@ export async function createRole(_prev: CreateRoleState, formData: FormData): Pr
 
   try {
     const role = await ctx.db.role.create({ data: { name: parsed.data.name } });
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: "ROLE_CREATED",
@@ -53,7 +53,7 @@ export async function deleteRole(id: string) {
     throw new Error(friendlyDeleteError(err, "role"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ROLE_DELETED",
@@ -79,7 +79,7 @@ export async function setRolePermission(roleId: string, moduleKey: Module, actio
     await ctx.db.rolePermission.deleteMany({ where: { roleId, moduleKey, action: upperAction } });
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: granted ? "PERMISSION_GRANTED" : "PERMISSION_REVOKED",

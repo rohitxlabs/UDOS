@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z
@@ -39,7 +39,7 @@ export async function saveAcademicYear(_prev: AcademicYearState, formData: FormD
       ? await ctx.db.academicYear.update({ where: { id }, data })
       : await ctx.db.academicYear.create({ data });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "ACADEMIC_YEAR_UPDATED" : "ACADEMIC_YEAR_CREATED",
@@ -66,7 +66,7 @@ export async function setCurrentAcademicYear(id: string) {
     ctx.db.academicYear.update({ where: { id }, data: { isCurrent: true } }),
   ]);
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ACADEMIC_YEAR_SET_CURRENT",
@@ -86,7 +86,7 @@ export async function deleteAcademicYear(id: string) {
     throw new Error(friendlyDeleteError(err, "academic year"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ACADEMIC_YEAR_DELETED",

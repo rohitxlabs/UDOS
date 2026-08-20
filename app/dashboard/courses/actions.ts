@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -39,7 +39,7 @@ export async function saveCourse(_prev: CourseState, formData: FormData): Promis
       ? await ctx.db.course.update({ where: { id }, data: { name, code, durationSemesters, departmentId } })
       : await ctx.db.course.create({ data: { name, code, durationSemesters, departmentId } });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "COURSE_UPDATED" : "COURSE_CREATED",
@@ -67,7 +67,7 @@ export async function deleteCourse(id: string) {
     throw new Error(friendlyDeleteError(err, "course"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "COURSE_DELETED",

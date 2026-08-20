@@ -7,13 +7,19 @@ const secretKey = process.env.AUTH_SECRET;
 if (!secretKey) throw new Error("AUTH_SECRET environment variable is not set");
 const encodedKey = new TextEncoder().encode(secretKey);
 
-const SESSION_COOKIE = "erp_session";
+// Exported so proxy.ts and the session-expired route name the same cookie as
+// this module rather than each keeping their own copy of the string.
+export const SESSION_COOKIE = "erp_session";
 const SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
 
-// Two completely separate identity spaces share one login form (spec
-// section 16): a platform admin's session vs a college's own user session.
-// Which branch applies is decided once, at login, from which database the
+// Two completely separate identity spaces share one login form: the platform
+// owner's Super Admin session vs a college user's session. Which branch
+// applies is decided once, at login, by which of the two databases the
 // username was found in — never trusted from client input afterwards.
+//
+// The COLLEGE branch carries no collegeId: this deployment serves exactly one
+// college, so there is nothing to identify. A session simply cannot name a
+// different college, because the concept does not exist at runtime.
 export type SessionPayload =
   | {
       scope: "PLATFORM";
@@ -25,12 +31,10 @@ export type SessionPayload =
       expiresAt: number;
     }
   | {
-      scope: "TENANT";
+      scope: "COLLEGE";
       userId: string;
       username: string;
       name: string;
-      collegeId: string;
-      collegeSlug: string;
       roleId: string | null;
       roleName: string | null;
       mustChangePassword: boolean;
@@ -68,7 +72,7 @@ async function setSessionCookie(sessionToken: string, expiresAt: number) {
 
 // Plain Omit doesn't distribute over a union — it collapses SessionPayload
 // to the intersection of its branches' keys first, which would let callers
-// pass a PLATFORM payload missing `collegeId` and a TENANT payload missing
+// pass a COLLEGE payload missing `roleId` and a PLATFORM payload missing
 // `platformRole` without a type error. Distribute manually instead.
 type NewSession = { [K in SessionPayload["scope"]]: Omit<Extract<SessionPayload, { scope: K }>, "expiresAt"> }[SessionPayload["scope"]];
 

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { toNumber } from "@/lib/format";
 
 const METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CARD", "ONLINE", "CHEQUE"] as const;
@@ -73,7 +73,7 @@ export async function recordPayment(input: PaymentInput): Promise<{ error?: stri
       return number;
     });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: "PAYMENT_RECORDED",
@@ -117,7 +117,7 @@ export async function refundPayment(paymentId: string, reason: string): Promise<
     }),
   ]);
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "PAYMENT_REFUNDED",

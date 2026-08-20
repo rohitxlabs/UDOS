@@ -2,10 +2,10 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
-import { requireTenant } from "@/lib/auth/dal";
+import { requireCollege } from "@/lib/auth/dal";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/auth/session";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 const schema = z
   .object({
@@ -26,7 +26,7 @@ export async function changePassword(
   _prevState: ChangePasswordState,
   formData: FormData
 ): Promise<ChangePasswordState> {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   const parsed = schema.safeParse({
     currentPassword: formData.get("currentPassword"),
@@ -52,18 +52,16 @@ export async function changePassword(
   });
 
   await createSession({
-    scope: "TENANT",
+    scope: "COLLEGE",
     userId: updated.id,
     username: updated.username,
     name: updated.name,
-    collegeId: ctx.collegeId,
-    collegeSlug: ctx.college.slug,
     roleId: updated.roleId,
     roleName: ctx.roleName,
     mustChangePassword: false,
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: user.id,
     roleName: ctx.roleName,
     action: "PASSWORD_CHANGED",

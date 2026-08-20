@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const bookSchema = z
@@ -70,7 +70,7 @@ export async function saveBook(_prev: BookState, formData: FormData): Promise<Bo
     throw err;
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "LIBRARY_BOOK_UPDATED" : "LIBRARY_BOOK_ADDED",
@@ -95,7 +95,7 @@ export async function deleteBook(id: string) {
     throw new Error(friendlyDeleteError(err, "book"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LIBRARY_BOOK_REMOVED",
@@ -149,7 +149,7 @@ export async function issueBook(input: {
     throw err;
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LIBRARY_BOOK_ISSUED",
@@ -190,7 +190,7 @@ export async function returnBook(
     }),
   ]);
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LIBRARY_BOOK_RETURNED",

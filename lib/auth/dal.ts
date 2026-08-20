@@ -3,13 +3,13 @@ import { cache } from "react";
 import { forbidden, redirect } from "next/navigation";
 import { decrypt, getSessionCookie, type SessionPayload } from "@/lib/auth/session";
 import { prisma as platformDb } from "@/lib/prisma";
-import { getTenantClient } from "@/lib/tenant-db";
+import { collegeDb, type CollegeDb } from "@/lib/college-db";
+import { COLLEGE_ID } from "@/lib/college";
 import { can, permissionKey, type Capability, type Module } from "@/lib/permissions";
 
-// Data Access Layer: the single source of truth for "who is logged in, for
-// which tenant (if any), and what can they do." Every server component /
-// server action / route handler that needs auth should go through here
-// rather than trusting proxy.ts alone.
+// Data Access Layer: the single source of truth for "who is logged in and
+// what can they do." Every server component / server action / route handler
+// that needs auth should go through here rather than trusting proxy.ts alone.
 export const verifySession = cache(async (): Promise<SessionPayload> => {
   const token = await getSessionCookie();
   const payload = await decrypt(token);
@@ -30,86 +30,107 @@ export type PlatformAccessContext = {
   mustChangePassword: boolean;
 };
 
-export type TenantAccessContext = {
-  scope: "TENANT";
+export type CollegeAccessContext = {
+  scope: "COLLEGE";
   userId: string;
   username: string;
   name: string;
   mustChangePassword: boolean;
-  collegeId: string;
-  college: { id: string; name: string; slug: string; logoUrl: string | null };
+  college: { id: string; name: string; code: string; logoUrl: string | null };
   roleId: string | null;
   roleName: string | null;
-  db: ReturnType<typeof getTenantClient>;
+  db: CollegeDb;
   enabledModules: Set<string>;
   permissions: Set<string>;
 };
 
-export type AccessContext = PlatformAccessContext | TenantAccessContext;
+export type AccessContext = PlatformAccessContext | CollegeAccessContext;
 
-// Everything a request needs to answer "what is this user allowed to see
-// and do," resolved once per request. This is the ONLY place collegeId
-// flows into a database connection — always from the signed session, never
-// from anything the client sent.
+// Everything a request needs to answer "what is this user allowed to see and
+// do," resolved once per request.
+//
+// There is no tenant resolution step here any more: `db` is this
+// deployment's one college database, fixed at process start. What still has
+// to be resolved per request is the two access layers — which modules the
+// platform granted this college (Layer 1, platform database) and what this
+// user's role may do inside them (Layer 2, college database).
 export const getAccessContext = cache(async (): Promise<AccessContext> => {
   const session = await verifySession();
 
   if (session.scope === "PLATFORM") {
+    // Read the account rather than trusting the token's copy of it. A signed
+    // session proves who signed in, not that they are still allowed in — and
+    // a token outlives the row it describes by up to its full 12 hours.
+    //
+    // Without this check a Super Admin who was deactivated, deleted, or whose
+    // id belongs to a different database keeps full platform authority until
+    // the token expires, and every audit write they trigger fails a foreign
+    // key on the way out.
+    const platformUser = await platformDb.platformUser.findUnique({ where: { id: session.userId } });
+    if (!platformUser || !platformUser.isActive) redirect("/session-expired");
+
     return {
       scope: "PLATFORM",
-      userId: session.userId,
-      username: session.username,
-      name: session.name,
-      platformRole: session.platformRole,
-      mustChangePassword: session.mustChangePassword,
+      userId: platformUser.id,
+      username: platformUser.username,
+      name: platformUser.name,
+      platformRole: platformUser.platformRole,
+      mustChangePassword: platformUser.mustChangePassword,
     };
   }
 
-  const college = await platformDb.college.findUnique({ where: { id: session.collegeId } });
-  if (!college || !college.isActive) {
-    redirect("/login");
+  // Same reasoning as the PLATFORM branch: confirm the account still exists
+  // and is active, rather than taking the token's word for it.
+  const [college, collegeUser] = await Promise.all([
+    platformDb.college.findUnique({ where: { id: COLLEGE_ID } }),
+    collegeDb.user.findUnique({ where: { id: session.userId }, include: { role: true } }),
+  ]);
+
+  // No college row means the deployment was never seeded, and an unseeded
+  // deployment has no modules granted either — every screen would render
+  // empty and unexplained. Bounce to login rather than serve that.
+  if (!college || !college.isActive || !collegeUser || !collegeUser.isActive) {
+    redirect("/session-expired");
   }
 
-  const db = getTenantClient(college.id, college.databaseUrlEncrypted);
-
-  const [tenantModules, rolePermissions] = await Promise.all([
-    platformDb.tenantModule.findMany({
-      where: { collegeId: college.id, enabled: true, module: { isActive: true } },
+  const [moduleGrants, rolePermissions] = await Promise.all([
+    platformDb.moduleAccess.findMany({
+      where: { enabled: true, module: { isActive: true } },
       select: { module: { select: { key: true } } },
     }),
-    session.roleId
-      ? db.rolePermission.findMany({ where: { roleId: session.roleId } })
+    collegeUser.roleId
+      ? collegeDb.rolePermission.findMany({ where: { roleId: collegeUser.roleId } })
       : Promise.resolve([]),
   ]);
 
-  const enabledModules = new Set(tenantModules.map((tm) => tm.module.key));
+  const enabledModules = new Set(moduleGrants.map((row) => row.module.key));
   const permissions = new Set(
     rolePermissions.map((rp) => permissionKey(rp.moduleKey as Module, rp.action.toLowerCase() as Capability))
   );
 
   return {
-    scope: "TENANT",
-    userId: session.userId,
-    username: session.username,
-    name: session.name,
-    mustChangePassword: session.mustChangePassword,
-    collegeId: college.id,
-    college: { id: college.id, name: college.name, slug: college.slug, logoUrl: college.logoUrl },
-    roleId: session.roleId,
-    roleName: session.roleName,
-    db,
+    scope: "COLLEGE",
+    userId: collegeUser.id,
+    username: collegeUser.username,
+    name: collegeUser.name,
+    mustChangePassword: collegeUser.mustChangePassword,
+    college: { id: college.id, name: college.name, code: college.code, logoUrl: college.logoUrl },
+    roleId: collegeUser.roleId,
+    roleName: collegeUser.role?.name ?? null,
+    db: collegeDb,
     enabledModules,
     permissions,
   };
 });
 
-// Guard for pages/actions that only make sense for a college's own users
+// Guard for pages/actions that only make sense for the college's own users
 // (i.e. almost everything under /dashboard). Redirects a platform admin who
-// wanders in — platform admins have no automatic tenant data access
-// (spec section 27).
-export async function requireTenant(): Promise<TenantAccessContext> {
+// wanders in — holding the module switches is not the same as holding an
+// account inside the college, and the Super Admin has no record in the
+// college database at all.
+export async function requireCollege(): Promise<CollegeAccessContext> {
   const ctx = await getAccessContext();
-  if (ctx.scope !== "TENANT") redirect("/platform");
+  if (ctx.scope !== "COLLEGE") redirect("/platform");
   return ctx;
 }
 
@@ -124,8 +145,8 @@ export async function requirePlatform(): Promise<PlatformAccessContext> {
 // the caller's role must be granted this action on it. Throwing is right
 // here — a rejected mutation surfaces to the client as an action error the
 // caller already handles with a toast.
-export async function requireCapability(moduleName: Module, capability: Capability): Promise<TenantAccessContext> {
-  const ctx = await requireTenant();
+export async function requireCapability(moduleName: Module, capability: Capability): Promise<CollegeAccessContext> {
+  const ctx = await requireCollege();
   if (!can(ctx, moduleName, capability)) {
     throw new Error(`Forbidden: role "${ctx.roleName ?? "none"}" lacks ${capability} on ${moduleName}`);
   }
@@ -138,13 +159,12 @@ export async function requireCapability(moduleName: Module, capability: Capabili
 // app/forbidden.tsx with a real 403 status instead.
 //
 // This is the backend check, not a cosmetic one — the sidebar already hides
-// links the caller cannot use, but typing the URL directly lands here
-// (spec section 9: frontend hiding alone is not sufficient).
+// links the caller cannot use, but typing the URL directly lands here.
 export async function requirePageAccess(
   moduleName: Module,
   capability: Capability = "view"
-): Promise<TenantAccessContext> {
-  const ctx = await requireTenant();
+): Promise<CollegeAccessContext> {
+  const ctx = await requireCollege();
   if (!can(ctx, moduleName, capability)) forbidden();
   return ctx;
 }

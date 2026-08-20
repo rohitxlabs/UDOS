@@ -1,5 +1,8 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('SUPER_ADMIN', 'MANAGEMENT', 'TEACHER', 'ACCOUNTS', 'EXAM_CELL', 'STUDENT', 'PARENT');
+CREATE TYPE "PermissionAction" AS ENUM ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'EXPORT', 'PRINT');
 
 -- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
@@ -38,12 +41,39 @@ CREATE TYPE "LeaveStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE "NoticeAudience" AS ENUM ('ALL', 'STUDENTS', 'TEACHERS', 'ACCOUNTS', 'MANAGEMENT', 'DEPARTMENT', 'COURSE', 'SEMESTER', 'SECTION');
 
 -- CreateTable
+CREATE TABLE "Settings" (
+    "id" TEXT NOT NULL DEFAULT 'settings',
+    "attendanceMinPercent" DECIMAL(5,2) NOT NULL DEFAULT 75,
+
+    CONSTRAINT "Settings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Role" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Role_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RolePermission" (
+    "id" TEXT NOT NULL,
+    "roleId" TEXT NOT NULL,
+    "moduleKey" TEXT NOT NULL,
+    "action" "PermissionAction" NOT NULL,
+
+    CONSTRAINT "RolePermission_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "email" TEXT,
     "passwordHash" TEXT NOT NULL,
-    "role" "Role" NOT NULL,
     "name" TEXT NOT NULL,
     "phone" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -52,35 +82,16 @@ CREATE TABLE "User" (
     "lastLoginAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "roleId" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "College" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "logoUrl" TEXT,
-    "address" TEXT,
-    "city" TEXT,
-    "state" TEXT,
-    "pincode" TEXT,
-    "phone" TEXT,
-    "email" TEXT,
-    "website" TEXT,
-    "currentAcademicYearId" TEXT,
-    "attendanceMinPercent" DECIMAL(5,2) NOT NULL DEFAULT 75,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "College_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL,
     "userId" TEXT,
-    "role" "Role",
+    "roleName" TEXT,
     "action" TEXT NOT NULL,
     "module" TEXT NOT NULL,
     "recordId" TEXT,
@@ -96,7 +107,6 @@ CREATE TABLE "AuditLog" (
 -- CreateTable
 CREATE TABLE "Department" (
     "id" TEXT NOT NULL,
-    "collegeId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -594,13 +604,19 @@ CREATE TABLE "AdmissionApplication" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Role_name_key" ON "Role"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RolePermission_roleId_moduleKey_action_key" ON "RolePermission"("roleId", "moduleKey", "action");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE INDEX "User_role_idx" ON "User"("role");
+CREATE INDEX "User_roleId_idx" ON "User"("roleId");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_module_recordId_idx" ON "AuditLog"("module", "recordId");
@@ -612,10 +628,10 @@ CREATE INDEX "AuditLog_userId_idx" ON "AuditLog"("userId");
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Department_collegeId_code_key" ON "Department"("collegeId", "code");
+CREATE UNIQUE INDEX "Department_code_key" ON "Department"("code");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Course_departmentId_code_key" ON "Course"("departmentId", "code");
+CREATE UNIQUE INDEX "Course_code_key" ON "Course"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AcademicYear_name_key" ON "AcademicYear"("name");
@@ -711,13 +727,16 @@ CREATE UNIQUE INDEX "AdmissionApplication_applicationNumber_key" ON "AdmissionAp
 CREATE UNIQUE INDEX "AdmissionApplication_studentId_key" ON "AdmissionApplication"("studentId");
 
 -- AddForeignKey
+ALTER TABLE "RolePermission" ADD CONSTRAINT "RolePermission_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Department" ADD CONSTRAINT "Department_collegeId_fkey" FOREIGN KEY ("collegeId") REFERENCES "College"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Course" ADD CONSTRAINT "Course_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -901,3 +920,4 @@ ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_studentId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "AdmissionApplication" ADD CONSTRAINT "AdmissionApplication_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

@@ -1,8 +1,8 @@
-import { requireTenant } from "@/lib/auth/dal";
+import { requireCollege } from "@/lib/auth/dal";
 import { ChangePasswordForm } from "./change-password-form";
 
 export default async function ChangePasswordPage() {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   return (
     <div className="mx-auto max-w-md">

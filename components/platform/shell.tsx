@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { GraduationCap, Menu, X, LogOut, KeyRound, LayoutDashboard, Building2, Blocks, ScrollText } from "lucide-react";
+import { GraduationCap, Menu, X, LogOut, KeyRound, Building2, Blocks, ScrollText } from "lucide-react";
 import clsx from "clsx";
 import { logout } from "@/lib/auth/actions";
 
+// No "Colleges" entry: this deployment serves one college, and its control
+// panel is the landing page itself.
 const NAV_ITEMS = [
-  { href: "/platform", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/platform/colleges", label: "Colleges", icon: Building2 },
-  { href: "/platform/modules", label: "Modules", icon: Blocks },
+  { href: "/platform", label: "College", icon: Building2 },
+  { href: "/platform/modules", label: "Module Catalog", icon: Blocks },
   { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
 ];
 

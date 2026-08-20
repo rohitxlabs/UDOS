@@ -3,7 +3,7 @@ import { Plus, Search } from "lucide-react";
 import { requirePageAccess } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { StudentsTable } from "./students-table";
-import type { Prisma } from "@/app/generated/tenant-prisma/client";
+import type { Prisma } from "@/app/generated/college-prisma/client";
 
 const PAGE_SIZE = 20;
 

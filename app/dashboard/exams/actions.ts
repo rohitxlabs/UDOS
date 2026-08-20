@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const examSchema = z
@@ -50,7 +50,7 @@ export async function saveExam(_prev: ExamState, formData: FormData): Promise<Ex
 
   const exam = id ? await ctx.db.examination.update({ where: { id }, data }) : await ctx.db.examination.create({ data });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "EXAM_UPDATED" : "EXAM_CREATED",
@@ -72,7 +72,7 @@ export async function deleteExam(id: string) {
     throw new Error(friendlyDeleteError(err, "examination"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "EXAM_DELETED",
@@ -145,7 +145,7 @@ export async function saveExamSubject(_prev: ExamState, formData: FormData): Pro
       ? await ctx.db.examSubject.update({ where: { id }, data })
       : await ctx.db.examSubject.create({ data });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "EXAM_SUBJECT_UPDATED" : "EXAM_SUBJECT_SCHEDULED",
@@ -176,7 +176,7 @@ export async function deleteExamSubject(id: string) {
     throw new Error(friendlyDeleteError(err, "scheduled subject"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "EXAM_SUBJECT_REMOVED",
@@ -257,7 +257,7 @@ export async function recomputeEligibility(examId: string): Promise<{ error?: st
     })
   );
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "EXAM_ELIGIBILITY_COMPUTED",
@@ -305,7 +305,7 @@ export async function overrideEligibility(input: {
     },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "EXAM_ELIGIBILITY_OVERRIDDEN",

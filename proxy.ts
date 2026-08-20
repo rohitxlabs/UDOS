@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decrypt } from "@/lib/auth/session";
-
-const SESSION_COOKIE = "erp_session";
+import { decrypt, SESSION_COOKIE } from "@/lib/auth/session";
 
 // Optimistic check only — it avoids a flash of protected UI for logged-out
 // users and bounces logged-in users away from /login. The real
@@ -20,7 +18,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (session && wantsDashboard && session.scope !== "TENANT") {
+  if (session && wantsDashboard && session.scope !== "COLLEGE") {
     return NextResponse.redirect(new URL("/platform", request.url));
   }
 

@@ -3,18 +3,18 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { KeyRound, Loader2 } from "lucide-react";
-import { resetCollegeAdminPassword } from "../actions";
+import { resetCollegeAdminPassword } from "./actions";
 import { Modal } from "@/components/dashboard/modal";
 import { CredentialsDialog } from "@/components/dashboard/credentials-dialog";
 
-export function AdminAccess({ collegeId, collegeName }: { collegeId: string; collegeName: string }) {
+export function AdminAccess({ collegeName }: { collegeName: string }) {
   const [confirming, setConfirming] = useState(false);
   const [issued, setIssued] = useState<{ username: string; password: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleReset() {
     startTransition(async () => {
-      const result = await resetCollegeAdminPassword(collegeId);
+      const result = await resetCollegeAdminPassword();
       if (result.error) toast.error(result.error);
       else if (result.success) {
         setConfirming(false);

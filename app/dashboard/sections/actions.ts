@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z.object({
@@ -35,7 +35,7 @@ export async function saveSection(_prev: SectionState, formData: FormData): Prom
       ? await ctx.db.section.update({ where: { id }, data: { name, semesterId } })
       : await ctx.db.section.create({ data: { name, semesterId } });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "SECTION_UPDATED" : "SECTION_CREATED",
@@ -63,7 +63,7 @@ export async function deleteSection(id: string) {
     throw new Error(friendlyDeleteError(err, "section"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "SECTION_DELETED",

@@ -2,7 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
-import { updateCollegeModules } from "../actions";
+import { updateModuleAccess } from "./actions";
 import { moduleWithPrerequisites, moduleWithDependents, type Module } from "@/lib/permissions";
 
 export type ModuleRow = {
@@ -13,7 +13,7 @@ export type ModuleRow = {
   requires: string[];
 };
 
-export function ModuleToggles({ collegeId, modules }: { collegeId: string; modules: ModuleRow[] }) {
+export function ModuleToggles({ modules }: { modules: ModuleRow[] }) {
   const [, startTransition] = useTransition();
 
   // The checkbox is driven by server state, which only catches up after the
@@ -39,7 +39,7 @@ export function ModuleToggles({ collegeId, modules }: { collegeId: string; modul
     startTransition(async () => {
       applyOptimistic({ keys: predicted, enabled: next });
       try {
-        const { changed } = await updateCollegeModules(collegeId, moduleKey, next);
+        const { changed } = await updateModuleAccess(moduleKey, next);
         const others = changed.filter((k) => k !== moduleKey);
         if (changed.length === 0) return;
         toast.success(

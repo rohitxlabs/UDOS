@@ -1,5 +1,5 @@
 // Two-level access model (see the platform spec):
-//   Layer 1 — is this module even enabled for the tenant? (Platform Super Admin)
+//   Layer 1 — has the platform granted this module to the college? (Super Admin)
 //   Layer 2 — does this user's role have this action on that module? (College Admin)
 // Both layers are precomputed once per request into plain Sets by
 // lib/auth/dal.ts's getAccessContext(), so everything in this file is a
@@ -71,7 +71,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   settings: "Settings",
 };
 
-// Core tenant self-administration — always available once a college
+// Core college self-administration — always available once a college
 // exists at all, never subject to the platform's per-module toggle (a
 // College Admin must always be able to manage their own users/roles even
 // if the platform admin forgot to tick a box for it). Only "dashboard" and
@@ -159,7 +159,7 @@ export function hasPermission(permissions: Set<string>, moduleKey: Module, actio
 }
 
 // The combined check most UI code wants: module must be enabled for the
-// tenant AND the caller's role must be granted this action on it.
+// college AND the caller's role must be granted this action on it.
 export function can(
   ctx: { enabledModules: Set<string>; permissions: Set<string> },
   moduleKey: Module,

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma as TenantPrisma } from "@/app/generated/tenant-prisma/client";
+import type { Prisma as CollegePrisma } from "@/app/generated/college-prisma/client";
 
 // The academic hierarchy, declared once so that every part of the app
 // agrees on what depends on what. Nothing below this line hard-codes the
@@ -69,7 +69,7 @@ export type AcademicChainInput = {
 
 export type ResolvedChain = Record<AcademicLevel, string>;
 
-type Tx = TenantPrisma.TransactionClient;
+type Tx = CollegePrisma.TransactionClient;
 
 const isExisting = <T>(input: LevelInput<T>): input is { id: string } => "id" in input;
 

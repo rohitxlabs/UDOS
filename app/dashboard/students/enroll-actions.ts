@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
 import { createLoginAccount } from "@/lib/provisioning";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { resolveAcademicChain, type AcademicChainInput } from "@/lib/academic-dependencies";
 import { attachStudentPackage, type PackageResult } from "@/lib/student-package";
 
@@ -97,7 +97,7 @@ export async function enrollStudent(input: EnrollInput): Promise<EnrollState> {
     const result = await ctx.db.$transaction(async (tx) => {
       const resolved = await resolveAcademicChain(tx, chain as AcademicChainInput);
 
-      const account = await createLoginAccount(ctx.collegeId, tx, {
+      const account = await createLoginAccount(tx, {
         name: student.name,
         roleId: student.roleId,
         email: student.email,
@@ -127,7 +127,7 @@ export async function enrollStudent(input: EnrollInput): Promise<EnrollState> {
       return { account, studentId: created.id, attached };
     }, TX_OPTIONS);
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: "STUDENT_ENROLLED",

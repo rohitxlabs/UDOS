@@ -1,8 +1,8 @@
-import { requireTenant } from "@/lib/auth/dal";
+import { requireCollege } from "@/lib/auth/dal";
 import { DashboardShell } from "@/components/dashboard/shell";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   return (
     <DashboardShell

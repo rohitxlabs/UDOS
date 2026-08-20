@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const assignmentSchema = z.object({
@@ -87,7 +87,7 @@ export async function saveAssignment(_prev: AssignmentState, formData: FormData)
     }
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "ASSIGNMENT_UPDATED" : "ASSIGNMENT_CREATED",
@@ -109,7 +109,7 @@ export async function deleteAssignment(id: string) {
     throw new Error(friendlyDeleteError(err, "assignment"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ASSIGNMENT_DELETED",
@@ -159,7 +159,7 @@ export async function gradeSubmission(input: {
     },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ASSIGNMENT_SUBMISSION_GRADED",

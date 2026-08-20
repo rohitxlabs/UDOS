@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:generate": "prisma generate && prisma generate --config prisma/college/prisma.config.ts",
+    "db:migrate": "prisma migrate deploy && prisma migrate deploy --config prisma/college/prisma.config.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "npm run prisma:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

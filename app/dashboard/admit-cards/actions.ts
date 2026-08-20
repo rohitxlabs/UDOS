@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 // Admit cards exist only for students the college has cleared to sit the
 // exam — generating them is the point where eligibility becomes a physical
@@ -52,7 +52,7 @@ export async function generateAdmitCards(examId: string): Promise<{ error?: stri
     ? await ctx.db.admitCard.deleteMany({ where: { examId, studentId: { in: revoked }, releasedAt: null } })
     : { count: 0 };
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ADMIT_CARDS_GENERATED",
@@ -76,7 +76,7 @@ export async function releaseAdmitCards(examId: string): Promise<{ error?: strin
     data: { releasedAt: new Date(), releasedById: ctx.userId },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ADMIT_CARDS_RELEASED",
@@ -97,7 +97,7 @@ export async function withdrawAdmitCards(examId: string): Promise<{ error?: stri
 
   await ctx.db.admitCard.updateMany({ where: { examId }, data: { releasedAt: null, releasedById: null } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ADMIT_CARDS_WITHDRAWN",

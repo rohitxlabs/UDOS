@@ -1,16 +1,25 @@
-// Tenant database schema — one physical Postgres database (or Postgres
-// schema/namespace) per college. This file defines the schema that gets
-// applied to EVERY tenant database via `prisma migrate deploy`, dynamically
-// targeted with that tenant's own connection string at provisioning time.
+// College database schema — the operational ERP data for the single college
+// this deployment serves: students, faculty, academics, fees, library, and
+// the college's own users/roles/audit trail.
 //
-// There is no "College" model here on purpose: the database itself IS the
-// tenant boundary, so nothing in this file needs a collegeId column. The
-// platform database (../schema.prisma) is the only place that knows which
-// physical database belongs to which college.
+// One deployment = one college = one database (COLLEGE_DATABASE_URL). There
+// is no collegeId column anywhere in this file because the database itself
+// is the college boundary; isolation between colleges comes from them being
+// separate deployments, not from a discriminator column.
+//
+// The complete schema is applied to every deployment regardless of which
+// modules the Super Admin granted — module access is enforced in the
+// application layer (lib/permissions.ts), never by withholding tables. That
+// way turning a module on later is a flag change, not a migration against
+// live data.
+//
+// Deployment-level configuration (the college profile, the module grants and
+// the platform Super Admin) lives in the separate platform database —
+// see ../schema.prisma.
 
 generator client {
   provider = "prisma-client"
-  output   = "../../app/generated/tenant-prisma"
+  output   = "../../app/generated/college-prisma"
 }
 
 datasource db {
@@ -120,7 +129,7 @@ enum NoticeAudience {
 
 // A singleton — always id "settings". College identity (name/logo/address)
 // is owned by the platform database (set at onboarding); this holds the
-// tenant's own academic/business rules that only they should control.
+// college's own academic/business rules that only they should control.
 model Settings {
   id                   String  @id @default("settings")
   attendanceMinPercent Decimal @default(75) @db.Decimal(5, 2)
@@ -128,9 +137,9 @@ model Settings {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Roles & permissions — Layer 2 access control (spec section 6/7/14).
-// Layer 1 (is the module even available to this tenant) is enforced by the
+// Layer 1 (has the platform granted this module at all) is enforced by the
 // application before it ever opens a connection to this database, using
-// the platform database's TenantModule table.
+// the platform database's ModuleAccess table.
 // ─────────────────────────────────────────────────────────────────────────
 
 model Role {

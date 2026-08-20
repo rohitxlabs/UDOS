@@ -14,7 +14,7 @@ export default async function PlatformAuditLogsPage({ searchParams }: PageProps<
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      include: { user: { select: { name: true, username: true } }, college: { select: { name: true } } },
+      include: { user: { select: { name: true, username: true } } },
     }),
     platformDb.platformAuditLog.count(),
   ]);
@@ -25,7 +25,10 @@ export default async function PlatformAuditLogsPage({ searchParams }: PageProps<
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-lg font-semibold text-slate-900">Platform audit logs</h1>
-        <p className="text-sm text-slate-500">Tenant lifecycle, module and subscription changes.</p>
+        <p className="text-sm text-slate-500">
+          What the platform owner did to this deployment — module grants and revocations, College Admin password
+          reissues, and Super Admin sign-ins. The college&apos;s own activity is logged separately, in their database.
+        </p>
       </div>
 
       <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -35,7 +38,7 @@ export default async function PlatformAuditLogsPage({ searchParams }: PageProps<
               <th className="px-4 py-3 font-medium">When</th>
               <th className="px-4 py-3 font-medium">Admin</th>
               <th className="px-4 py-3 font-medium">Action</th>
-              <th className="px-4 py-3 font-medium">College</th>
+              <th className="px-4 py-3 font-medium">Area</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -53,7 +56,7 @@ export default async function PlatformAuditLogsPage({ searchParams }: PageProps<
                   {log.user ? `${log.user.name} (${log.user.username})` : "System"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{log.action.replaceAll("_", " ").toLowerCase()}</td>
-                <td className="px-4 py-3 text-slate-600">{log.college?.name ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{log.module}</td>
               </tr>
             ))}
           </tbody>

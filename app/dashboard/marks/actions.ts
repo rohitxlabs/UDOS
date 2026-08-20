@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 const componentSchema = z.coerce.number().int().min(0).max(1000).nullable();
 
@@ -91,7 +91,7 @@ export async function saveMarks(input: {
     })
   );
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "MARKS_SAVED",
@@ -118,7 +118,7 @@ export async function submitMarks(examSubjectId: string): Promise<{ error?: stri
 
   await ctx.db.marks.updateMany({ where: { examSubjectId }, data: { status: "SUBMITTED" } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "MARKS_SUBMITTED",
@@ -145,7 +145,7 @@ export async function verifyMarks(examSubjectId: string): Promise<{ error?: stri
     data: { status: "VERIFIED", verifiedById: ctx.userId, verifiedAt: new Date() },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "MARKS_VERIFIED",
@@ -170,7 +170,7 @@ export async function reopenMarks(examSubjectId: string): Promise<{ error?: stri
 
   await ctx.db.marks.updateMany({ where: { examSubjectId }, data: { status: "DRAFT" } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "MARKS_REOPENED",

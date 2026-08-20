@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 const STATUSES = ["PRESENT", "ABSENT", "LATE", "LEAVE"] as const;
 export type AttendanceStatusValue = (typeof STATUSES)[number];
@@ -59,7 +59,7 @@ export async function saveAttendance(input: SaveAttendanceInput): Promise<{ erro
     )
   );
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "ATTENDANCE_MARKED",

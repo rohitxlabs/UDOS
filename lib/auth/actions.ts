@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { deleteSession } from "@/lib/auth/session";
 import { getAccessContext } from "@/lib/auth/dal";
-import { writePlatformAuditLog, writeTenantAuditLog } from "@/lib/audit";
+import { writePlatformAuditLog, writeCollegeAuditLog } from "@/lib/audit";
 
 export async function logout() {
   const ctx = await getAccessContext();
@@ -14,7 +14,7 @@ export async function logout() {
     redirect("/login");
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LOGOUT",

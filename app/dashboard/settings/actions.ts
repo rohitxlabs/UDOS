@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 
 const schema = z.object({
   attendanceMinPercent: z.coerce.number().min(0).max(100),
@@ -28,7 +28,7 @@ export async function saveSettings(_prev: SettingsState, formData: FormData): Pr
     create: { id: "settings", ...parsed.data },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "SETTINGS_UPDATED",

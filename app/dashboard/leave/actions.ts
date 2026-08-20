@@ -2,8 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireCapability, requireTenant } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { requireCapability, requireCollege } from "@/lib/auth/dal";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 
 const requestSchema = z
@@ -22,7 +22,7 @@ export type LeaveState = { error?: string; success?: boolean };
 // privileged action. Filing on someone else's behalf is, and needs the
 // `create` capability on the module.
 export async function submitLeaveRequest(_prev: LeaveState, formData: FormData): Promise<LeaveState> {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   const parsed = requestSchema.safeParse({
     userId: formData.get("userId") || undefined,
@@ -50,7 +50,7 @@ export async function submitLeaveRequest(_prev: LeaveState, formData: FormData):
     },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LEAVE_REQUESTED",
@@ -81,7 +81,7 @@ export async function decideLeaveRequest(
     data: { status: decision, approvedById: ctx.userId, approvedAt: new Date() },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: decision === "APPROVED" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
@@ -96,7 +96,7 @@ export async function decideLeaveRequest(
 }
 
 export async function withdrawLeaveRequest(id: string): Promise<{ error?: string; success?: boolean }> {
-  const ctx = await requireTenant();
+  const ctx = await requireCollege();
 
   const request = await ctx.db.leaveRequest.findUnique({ where: { id } });
   if (!request) return { error: "Leave request not found" };
@@ -109,7 +109,7 @@ export async function withdrawLeaveRequest(id: string): Promise<{ error?: string
 
   await ctx.db.leaveRequest.delete({ where: { id } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "LEAVE_WITHDRAWN",

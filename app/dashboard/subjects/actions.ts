@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 
 const schema = z
@@ -56,7 +56,7 @@ export async function saveSubject(_prev: SubjectState, formData: FormData): Prom
           data: { name, code, credits, maxMarks, passMarks, semesterId, courseId: semester.courseId },
         });
 
-    await writeTenantAuditLog(ctx.db, {
+    await writeCollegeAuditLog(ctx.db, {
       userId: ctx.userId,
       roleName: ctx.roleName,
       action: id ? "SUBJECT_UPDATED" : "SUBJECT_CREATED",
@@ -84,7 +84,7 @@ export async function deleteSubject(id: string) {
     throw new Error(friendlyDeleteError(err, "subject"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "SUBJECT_DELETED",

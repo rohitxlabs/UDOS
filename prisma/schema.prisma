@@ -1,15 +1,23 @@
-// Platform (control-plane) database schema.
+// Platform (control-plane) database schema for a single-college deployment.
 //
-// This database stores ONLY platform/tenant metadata — colleges, the module
-// catalog, subscriptions, and platform admins. It must never contain a
-// college's students/staff/academic/financial records: those live in that
-// college's own database (see prisma/tenant/schema.prisma), reachable only
-// through the encrypted connection string stored on College.
+// One deployment serves exactly one college: its own server, its own domain,
+// its own pair of databases. Onboarding a new college means standing up a new
+// deployment, not adding a row here — so there is no college registry, no
+// tenant routing and no stored connection strings anywhere in this file.
 //
-// TenantUserDirectory exists purely so the single login form can figure out
-// *which* tenant database to check a username against before it can prove
-// who the user is (tenant databases are not cross-queryable, so this tiny
-// index — not the real user record — is what makes routing possible).
+// What this database holds is the configuration the platform owner controls
+// and the college does not:
+//
+//   * College       — the singleton profile of the college being served
+//   * Module        — the catalog of modules that exist in this ERP
+//   * ModuleAccess  — which of them this college has been granted (Layer 1)
+//   * PlatformUser  — the platform owner's own Super Admin login
+//
+// The college's operational data — students, staff, fees, its own users and
+// roles — lives in the separate college database (prisma/college/schema.prisma),
+// reached through COLLEGE_DATABASE_URL. Keeping the two apart means a college
+// user's session can never touch the switches that decide what they are
+// allowed to see.
 
 generator client {
   provider = "prisma-client"
@@ -24,49 +32,29 @@ datasource db {
 // Enums
 // ─────────────────────────────────────────────────────────────────────────
 
-// Platform-level role. Distinct from tenant roles: being a platform admin
-// grants no automatic access to any college's academic/business data
-// (spec section 27 / 34) — only platform (tenant/module/subscription)
-// management authority.
+// Platform-level role. Distinct from the college's own roles: being a
+// platform admin grants no automatic access to the college's academic or
+// financial data — only the authority to grant and revoke modules.
 enum PlatformRole {
   SUPER_ADMIN
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  TRIAL
-  EXPIRED
-  CANCELLED
-}
-
-// How far a college's own database has got through initialization. Kept
-// separate from TenantStatus (the business lifecycle) on purpose: a college
-// can be commercially ACTIVE while its database is still being built, and a
-// failed build must be visible without pretending the tenant was never
-// created (spec: "Do not silently report success when initialization fails").
-enum DatabaseInitStatus {
-  PENDING
-  INITIALIZING
-  READY
-  FAILED
-}
-
-enum TenantStatus {
-  CREATED
-  PROVISIONING
-  ACTIVE
-  SUSPENDED
-  DEACTIVATED
-  ARCHIVED
-}
-
 // ─────────────────────────────────────────────────────────────────────────
-// Tenants
+// The college this deployment serves
 // ─────────────────────────────────────────────────────────────────────────
 
+// A singleton. `id` defaults to a constant rather than a cuid so every write
+// is an upsert against the same row and a second college physically cannot
+// be created here — the deployment boundary is what separates colleges, and
+// a stray second row would quietly reintroduce the multi-tenancy this
+// architecture exists to avoid.
+//
+// Seeded from environment variables at deploy time (prisma/seed.ts), which
+// is why name/code are set rather than entered through a UI: the college's
+// identity is part of the deployment, not something configured after it.
 model College {
-  id        String       @id @default(cuid())
-  slug      String       @unique
+  id        String   @id @default("college")
+  code      String   @unique
   name      String
   logoUrl   String?
   address   String?
@@ -76,37 +64,20 @@ model College {
   phone     String?
   email     String?
   website   String?
-  status    TenantStatus @default(ACTIVE)
-  isActive  Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  // Encrypted at rest (lib/tenant-db.ts) — this college's own database
-  // connection string. Never sent to the frontend after it's saved.
-  databaseUrlEncrypted String
-
-  // Initialization state of that database. dbError holds the failure reason
-  // so a failed onboarding can be diagnosed without re-running it blind, and
-  // dbModels records exactly which models were created for this college —
-  // which depends on the modules it was granted.
-  dbStatus        DatabaseInitStatus @default(PENDING)
-  dbError         String?
-  dbModels        String[]           @default([])
-  dbInitializedAt DateTime?
-
-  tenantModules TenantModule[]
-  subscriptions Subscription[]
-  auditLogs     PlatformAuditLog[]
-  userDirectory TenantUserDirectory[]
+  // Cuts off every college login at once without touching their data —
+  // for a deployment that is being wound down or is between contracts.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Module marketplace
+// Module catalog & grants
 // ─────────────────────────────────────────────────────────────────────────
 
-// The platform's module catalog. A college only gets a nav entry / API
-// access for a module once a TenantModule row marks it enabled — a module
-// existing in this catalog is necessary but not sufficient for access.
+// Every module this ERP ships, mirrored from lib/permissions.ts by the seed.
+// Being in this catalog is necessary but not sufficient for access — the
+// college only sees a module once ModuleAccess marks it enabled.
 model Module {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -117,10 +88,9 @@ model Module {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  dependsOn     ModuleDependency[] @relation("ModuleDependsOn")
-  dependents    ModuleDependency[] @relation("ModuleDependents")
-  tenantModules TenantModule[]
-  planModules   PlanModule[]
+  dependsOn  ModuleDependency[] @relation("ModuleDependsOn")
+  dependents ModuleDependency[] @relation("ModuleDependents")
+  access     ModuleAccess?
 }
 
 model ModuleDependency {
@@ -133,88 +103,60 @@ model ModuleDependency {
   @@unique([moduleId, dependsOnId])
 }
 
-// Layer 1 access control: does this college have this module at all?
-// Controlled exclusively by the Platform Super Admin (spec section 6).
-model TenantModule {
+// Layer 1 access control: has this deployment's college been granted this
+// module at all? Controlled exclusively by the platform Super Admin.
+//
+// One row per module, not per (college, module) — there is only one college
+// here, so `moduleId` is the natural key. Disabling sets `enabled = false`
+// rather than deleting the row, so the audit trail of who turned what off
+// and when survives.
+//
+// Layer 2 — which of the college's own users may do what inside an enabled
+// module — is the College Admin's business and lives in the college
+// database's Role/RolePermission tables.
+model ModuleAccess {
   id          String    @id @default(cuid())
-  collegeId   String
-  college     College   @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  moduleId    String
+  moduleId    String    @unique
   module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   enabled     Boolean   @default(false)
   enabledAt   DateTime?
   enabledById String?
-
-  @@unique([collegeId, moduleId])
-}
-
-model Plan {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-
-  planModules   PlanModule[]
-  subscriptions Subscription[]
-}
-
-model PlanModule {
-  id       String @id @default(cuid())
-  planId   String
-  plan     Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
-  moduleId String
-  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-  @@unique([planId, moduleId])
-}
-
-model Subscription {
-  id        String             @id @default(cuid())
-  collegeId String
-  college   College            @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  planId    String
-  plan      Plan               @relation(fields: [planId], references: [id])
-  status    SubscriptionStatus @default(ACTIVE)
-  startDate DateTime           @default(now())
-  endDate   DateTime?
-
-  @@index([collegeId])
+  updatedAt   DateTime  @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Platform admins & audit log
 // ─────────────────────────────────────────────────────────────────────────
 
-// The platform owner's own staff. Completely separate identity space from
-// any college's users (spec section 16) — deliberately not the same model.
+// The platform owner's login for this deployment. A completely separate
+// identity space from the college's users, which live in the college
+// database — deliberately not the same model, so no college user can ever
+// be escalated into a Super Admin by editing a column.
 model PlatformUser {
-  id                 String        @id @default(cuid())
-  username           String        @unique
-  email              String?       @unique
+  id                 String       @id @default(cuid())
+  username           String       @unique
+  email              String?      @unique
   passwordHash       String
   name               String
   phone              String?
   platformRole       PlatformRole
-  isActive           Boolean       @default(true)
-  mustChangePassword Boolean       @default(true)
-  createdById        String?
-  createdBy          PlatformUser? @relation("PlatformUserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  createdUsers       PlatformUser[] @relation("PlatformUserCreatedBy")
+  isActive           Boolean      @default(true)
+  mustChangePassword Boolean      @default(true)
   lastLoginAt        DateTime?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   auditLogs PlatformAuditLog[]
 }
 
+// What the platform owner did to this deployment: module grants and
+// revocations, College Admin password reissues, sign-ins. Separate from the
+// college's own audit log (which lives in the college database) because the
+// two answer to different people.
 model PlatformAuditLog {
   id        String        @id @default(cuid())
   userId    String?
   user      PlatformUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  // The college a platform action concerned (e.g. "enabled module X"),
-  // null for pure platform actions (e.g. "created a plan").
-  collegeId String?
-  college   College?      @relation(fields: [collegeId], references: [id], onDelete: SetNull)
   action    String
   module    String
   recordId  String?
@@ -226,18 +168,5 @@ model PlatformAuditLog {
 
   @@index([module, recordId])
   @@index([userId])
-  @@index([collegeId])
   @@index([createdAt])
-}
-
-// Login-routing index only — see file header. The authoritative user record
-// lives in the tenant's own database.
-model TenantUserDirectory {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  collegeId String
-  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@index([collegeId])
 }

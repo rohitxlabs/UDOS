@@ -3,7 +3,7 @@
 // turns that into a message an admin can act on instead of a stack trace.
 //
 // Duck-typed rather than `instanceof Prisma.PrismaClientKnownRequestError`
-// on purpose: platform and tenant queries run through two separately
+// on purpose: platform and college queries run through two separately
 // generated Prisma Client packages, each with their own class identity, so
 // an `instanceof` check against one would silently miss errors from the
 // other. Both shapes expose the same `code`.

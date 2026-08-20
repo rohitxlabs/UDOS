@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 import { toNumber } from "@/lib/format";
 
@@ -48,7 +48,7 @@ export async function saveGrade(_prev: GradeState, formData: FormData): Promise<
   const data = { grade, minPercent, maxPercent, gradePoint };
   const row = id ? await ctx.db.gradeScale.update({ where: { id }, data }) : await ctx.db.gradeScale.create({ data });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "GRADE_BAND_UPDATED" : "GRADE_BAND_CREATED",
@@ -70,7 +70,7 @@ export async function deleteGrade(id: string) {
     throw new Error(friendlyDeleteError(err, "grade band"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "GRADE_BAND_DELETED",
@@ -198,7 +198,7 @@ export async function generateResults(examId: string): Promise<{ error?: string;
     results.map((r) => r.studentId)
   );
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "RESULTS_GENERATED",
@@ -211,9 +211,9 @@ export async function generateResults(examId: string): Promise<{ error?: string;
   return { generated: results.length };
 }
 
-type TenantDb = Awaited<ReturnType<typeof requireCapability>>["db"];
+type CollegeDb = Awaited<ReturnType<typeof requireCapability>>["db"];
 
-async function recomputeCgpa(db: TenantDb, studentIds: string[]) {
+async function recomputeCgpa(db: CollegeDb, studentIds: string[]) {
   const all = await db.result.findMany({
     where: { studentId: { in: studentIds }, sgpa: { not: null } },
     select: { id: true, studentId: true, sgpa: true },
@@ -243,7 +243,7 @@ export async function publishResults(examId: string): Promise<{ error?: string; 
 
   await ctx.db.result.updateMany({ where: { examId, publishedAt: null }, data: { publishedAt: new Date() } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "RESULTS_PUBLISHED",
@@ -264,7 +264,7 @@ export async function unpublishResults(examId: string): Promise<{ error?: string
 
   await ctx.db.result.updateMany({ where: { examId }, data: { publishedAt: null } });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "RESULTS_WITHDRAWN",

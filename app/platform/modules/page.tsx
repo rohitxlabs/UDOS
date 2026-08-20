@@ -10,7 +10,7 @@ export default async function ModulesPage() {
     orderBy: { name: "asc" },
     include: {
       dependsOn: { include: { dependsOnModule: { select: { name: true } } } },
-      _count: { select: { tenantModules: { where: { enabled: true } } } },
+      access: { select: { enabled: true } },
     },
   });
 
@@ -19,7 +19,10 @@ export default async function ModulesPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Module catalog</h1>
-          <p className="text-sm text-slate-500">Every module available to be enabled for colleges.</p>
+          <p className="text-sm text-slate-500">
+            Every module this ERP ships. Deactivating one here removes it from the catalog entirely — to grant or
+            revoke a module for this college, use the College page.
+          </p>
         </div>
         <CreateModuleButton modules={modules.map((m) => ({ key: m.key, name: m.name }))} />
       </div>
@@ -32,7 +35,7 @@ export default async function ModulesPage() {
           description: m.description,
           isActive: m.isActive,
           dependsOn: m.dependsOn.map((d) => d.dependsOnModule.name),
-          collegesUsing: m._count.tenantModules,
+          granted: m.access?.enabled ?? false,
         }))}
       />
     </div>

@@ -1,9 +1,9 @@
 import "server-only";
-import type { Prisma as TenantPrisma } from "@/app/generated/tenant-prisma/client";
+import type { Prisma as CollegePrisma } from "@/app/generated/college-prisma/client";
 import type { ResolvedChain } from "@/lib/academic-dependencies";
 import { toNumber } from "@/lib/format";
 
-type Tx = TenantPrisma.TransactionClient;
+type Tx = CollegePrisma.TransactionClient;
 
 // What a student is entitled to the moment they exist is decided by where
 // they sit in the hierarchy, not by an admin remembering to wire it up.

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/auth/dal";
-import { writeTenantAuditLog } from "@/lib/audit";
+import { writeCollegeAuditLog } from "@/lib/audit";
 import { friendlyDeleteError } from "@/lib/prisma-errors";
 import { toNumber } from "@/lib/format";
 
@@ -64,7 +64,7 @@ export async function saveFeeStructure(input: FeeStructureInput): Promise<{ erro
     })),
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: id ? "FEE_STRUCTURE_UPDATED" : "FEE_STRUCTURE_CREATED",
@@ -86,7 +86,7 @@ export async function deleteFeeStructure(id: string) {
     throw new Error(friendlyDeleteError(err, "fee structure"));
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FEE_STRUCTURE_DELETED",
@@ -144,7 +144,7 @@ export async function assignFeeStructure(
     });
   }
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "FEE_STRUCTURE_ASSIGNED",
@@ -200,7 +200,7 @@ export async function adjustStudentFee(input: {
     },
   });
 
-  await writeTenantAuditLog(ctx.db, {
+  await writeCollegeAuditLog(ctx.db, {
     userId: ctx.userId,
     roleName: ctx.roleName,
     action: "STUDENT_FEE_ADJUSTED",

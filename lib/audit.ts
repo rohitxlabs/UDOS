@@ -35,6 +35,7 @@ async function requestMeta() {
     userAgent: headerList.get("user-agent") ?? undefined,
   };
 }
+//
 
 // The college's own activity log — lives in the college database, owned by
 // the college and readable by its own admins. Takes `db` from the caller's
